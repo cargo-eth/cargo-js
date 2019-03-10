@@ -21,8 +21,6 @@ export default async requestUrl => {
     ),
   );
 
-  console.log(contracts);
-
   return contracts.reduce((a, b) => {
     a[b.name] = b;
     return a;
