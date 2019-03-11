@@ -1,8 +1,5 @@
-import { Contract } from "web3-eth-contract/types";
 import fetch from 'isomorphic-fetch';
 import { TContracts, TContractNames } from './cargo';
-import { request } from "http";
-import Web3 from "web3/types";
 
 type TMintParams = {
   hasFiles: boolean,
@@ -86,8 +83,8 @@ export default class CargoApi {
     return this.request(`/v1/get-minted-tokens/${tokenAddress}`);
   }
 
-  getResellerBalance(tokenAddress: string) {
-    return this.request(`/v1/get-reseller-balance/${tokenAddress}`);
+  getResellerBalance(resellerAddress: string) {
+    return this.request(`/v1/get-reseller-balance/${resellerAddress}`);
   }
 
   getTokenContractById(tokenContractId: string) {

@@ -1,10 +1,10 @@
 // @flow
 import Web3 from 'web3';
 import getAllContracts from './getAllContracts';
-import { provider } from 'web3-providers/types';
-import { Contract } from 'web3-eth-contract/types';
 import Emitter from './events';
 import CargoApi from './api';
+import { Provider } from 'web3/providers';
+import Contract from 'web3/eth/contract';
 type TNetwork = 'local' | 'development' | 'production';
 
 type TCargoOptions = {
@@ -14,7 +14,7 @@ type TCargoOptions = {
 
 declare global {
   interface Window {
-    ethereum?: provider & { enable: () => Array<string> };
+    ethereum?: Provider & { enable: () => Array<string> };
     web3?: Web3;
   }
 }
@@ -53,6 +53,7 @@ class Cargo extends Emitter {
   web3?: Web3;
   metaMaskRequired?: true;
   api?: CargoApi;
+  provider: Provider;
 
   constructor() {
     super();
@@ -75,6 +76,7 @@ class Cargo extends Emitter {
     Object.keys(this.contracts).forEach(name => {
       const data = this.contracts[name];
       if (name !== 'cargoToken') {
+        // @ts-ignore
         this.contracts[name].instance = new this.web3.eth.contract(
           data.abi,
         ).at(data.address);
