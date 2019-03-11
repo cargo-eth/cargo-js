@@ -16,11 +16,10 @@ declare global {
   interface Window {
     ethereum?: provider & { enable: () => Array<string> };
     web3?: Web3;
-    ___CARGO_ACCOUNTS___?: Array<string>,
   }
 }
 
-export type TContractNames = 'cargo' | 'cargoSell' | 'cargoData' | 'cargoFunds' | 'cargoToken';
+export type TContractNames = 'cargo' | 'cargoSell' | 'cargoData' | 'cargoFunds' | 'cargoToken' | 'cargoAsset';
 
 type TContractObject = {
   name: TContractNames,
@@ -39,18 +38,6 @@ const REQUEST_URLS: { [N in TNetwork]: string } = {
   development: '',
   production: '',
 };
-
-function initializeContracts() {
-  Object.keys(this.contracts).forEach(name => {
-    const data = this.contracts[name];
-    if (name !== 'cargoToken') {
-      this.contracts[name].instance = new this.web3.eth.Contract(
-        data.abi,
-        data.address,
-      );
-    }
-  });
-}
 
 export type TContracts = {
   [Name in TContractNames]: TContractObject;
@@ -72,8 +59,9 @@ class Cargo extends Emitter {
   }
 
   private setUpWeb3() {
-    if (window.ethereum) {
-      const web3 = new Web3(window.ethereum);
+    this.provider = window['ethereum'] || window.web3.currentProvider;
+    if (this.provider) {
+      const web3 = new Web3(this.provider);
       this.web3 = web3;
       window.web3 = web3;
       this.initializeContracts();
@@ -87,10 +75,9 @@ class Cargo extends Emitter {
     Object.keys(this.contracts).forEach(name => {
       const data = this.contracts[name];
       if (name !== 'cargoToken') {
-        this.contracts[name].instance = new this.web3.eth.Contract(
+        this.contracts[name].instance = new this.web3.eth.contract(
           data.abi,
-          data.address,
-        );
+        ).at(data.address);
       }
     });
   }
@@ -103,18 +90,21 @@ class Cargo extends Emitter {
     this.requestUrl = REQUEST_URLS[this.options.network];
     this.contracts = await getAllContracts(this.requestUrl);
     this.setUpWeb3();
-    this.api = new CargoApi(this.contracts, this.requestUrl, !this.metaMaskRequired);
+    this.api = new CargoApi(this.contracts, this.requestUrl, !this.metaMaskRequired, this.web3);
     this.emit('initialized');
     this.initialized = true;
   };
 
   public enable = async () => {
     if (!this.initialized) {
+      this.emit('enable-error', 'Call cargo.init() first.');
       throw new Error('Call init() first');
     }
 
     if (this.web3) {
-      window.___CARGO_ACCOUNTS___ = await window.ethereum.enable();
+      this.accounts = await window.ethereum.enable();
+      this.api.setAccounts(this.accounts);
+      this.emit('enabled');
     }
   };
 }

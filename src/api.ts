@@ -28,18 +28,20 @@ export default class CargoApi {
     contracts: TContracts,
     requestUrl: string,
     hasMetaMask: boolean,
-    web3: any,
-    accounts: Array<string>
+    web3: any
   ) {
     this.requestUrl = requestUrl;
     this.hasMetaMask = hasMetaMask
     this.contracts = contracts;
     this.web3 = web3;
+  }
+
+  setAccounts(accounts: Array<string>) {
     this.accounts = accounts;
   }
 
-  request(path) {
-    return fetch(`${this.requestUrl}${path}`).then(async (res) => {
+  request(path, options?: {}) {
+    return fetch(`${this.requestUrl}${path}`, options).then(async (res) => {
       const json = await res.json();
       if (res.ok) {
         return {
@@ -108,41 +110,113 @@ export default class CargoApi {
     return this.request(`/v1/get-vendor-token-contracts/${vendorId}`);
   }
 
-  private _mint(parameters: TMintParams) {
+  private requestMintAbi(parameters: TMintParams) {
+    const formData = new FormData();
+    const { files, previewImage, ...rest } = parameters;
+    Object.keys(rest).forEach(key => {
+      const value = rest[key];
+      formData.append(key, value);
+    })
+    return this.request('/v1/mint', {
+      method: 'POST',
+      body: formData,
+    })
+  }
+
+  private getSignature(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const msgParams = [
+        {
+          type: 'string',
+          name: 'Message',
+          value: this.accounts[0],
+        },
+      ];
+
+      const from = this.accounts[0];
+
+      const params = [msgParams, from];
+      const method = 'eth_signTypedData';
+
+      this.web3.currentProvider.sendAsync(
+        {
+          method,
+          params,
+          from,
+        },
+        (err, result) => {
+          if (err) return reject(new Error(err.message));
+          if (result.error) {
+            return reject(new Error(result.error.message));
+          }
+          resolve(result.result);
+        }
+      );
+    })
 
   }
 
-  // Methods that require metamask
-  mint(parameters: TMintParams) {
-    const msgParams = [
-      {
-        type: 'string',
-        name: 'Message',
-        value: this.accounts[0],
-      },
-    ];
+  private requireMetaMask = () => {
+    if (!this.hasMetaMask) {
+      throw new Error('Metamask required');
+    }
+  }
 
-    const from = this.accounts[0];
-
-    const params = [msgParams, from];
-    const method = 'eth_signTypedData';
-
-    this.web3.currentProvider.sendAsync(
-      {
-        method,
-        params,
-        from,
-      },
-      (err, result) => {
-        if (err) throw new Error(err.message);
-        if (result.error) {
-          throw new Error(result.error.message)
+  private sendTx = options => new Promise((resolve, reject) => {
+    this.web3.eth.sendTransaction(
+      options,
+      (err, tx) => {
+        console.log(err);
+        if (!err) {
+          this.web3.eth.getTransactionReceipt(tx, (err, data) => {
+            if (data.status === '0x00') {
+              reject('reverted');
+            } else {
+              resolve(tx);
+            }
+          });
         }
-        this._mint({
-          signature: result.result,
-        });
-        console.log(JSON.stringify(result.result));
       }
     );
+  })
+
+  // Methods that require metamask
+  async mint(parameters: TMintParams) {
+    this.requireMetaMask();
+    const {
+      tokenAddress,
+      vendorId,
+      files,
+      hasFiles,
+      previewImage,
+      name,
+      description,
+    } = parameters;
+    const signature = await this.getSignature();
+    const res = await this.requestMintAbi({
+      account: this.accounts[0],
+      tokenAddress,
+      hasFiles,
+      files,
+      previewImage,
+      name,
+      description,
+      signature,
+      vendorId,
+    });
+
+    if (!res.err) {
+      const { data: { abi } } = res;
+
+      const tx = await this.sendTx({
+        to: tokenAddress,
+        data: abi,
+        from: this.accounts[0],
+      });
+
+      return tx;
+    } else {
+      throw new Error(JSON.stringify(res));
+    }
   }
 }

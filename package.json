@@ -1,12 +1,12 @@
 {
-  "name": "cargo-js",
+  "name": "@cargo-eth/js",
   "version": "1.0.0",
   "main": "dist/cargo.cjs.js",
   "module": "dist/cargo.esm.js",
   "browser": "dist/cargo.umd.js",
   "dependencies": {
     "isomorphic-fetch": "^2.2.1",
-    "web3": "^1.0.0-beta.48"
+    "web3": "^0.20.7"
   },
   "devDependencies": {
     "@types/web3": "^1.0.18",
