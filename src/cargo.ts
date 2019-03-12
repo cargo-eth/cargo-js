@@ -5,6 +5,7 @@ import Emitter from './events';
 import CargoApi from './api';
 import { Provider } from 'web3/providers';
 import Contract from 'web3/eth/contract';
+
 type TNetwork = 'local' | 'development' | 'production';
 
 type TCargoOptions = {
@@ -77,7 +78,7 @@ class Cargo extends Emitter {
       const data = this.contracts[name];
       if (name !== 'cargoToken') {
         // @ts-ignore
-        this.contracts[name].instance = new this.web3.eth.contract(
+        this.contracts[name].instance = this.web3.eth.contract(
           data.abi,
         ).at(data.address);
       }

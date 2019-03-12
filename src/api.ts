@@ -2,33 +2,37 @@ import fetch from 'isomorphic-fetch';
 import { TContracts, TContractNames } from './cargo';
 
 type TMintParams = {
-  hasFiles: boolean,
-  signature?: string,
-  account?: string,
-  vendorId: string,
-  tokenAddress: string,
-  name?: string,
-  description?: string,
-  metadata?: string,
-  files: FileList,
-  previewImage: File,
-}
+  hasFiles: boolean;
+  signature?: string;
+  account?: string;
+  vendorId: string;
+  tokenAddress: string;
+  name?: string;
+  description?: string;
+  metadata?: string;
+  files: FileList;
+  previewImage: File;
+};
 
 export default class CargoApi {
   requestUrl: string;
+
   hasMetaMask: boolean;
+
   contracts: TContracts;
+
   web3: any;
+
   accounts: Array<string>;
 
   constructor(
     contracts: TContracts,
     requestUrl: string,
     hasMetaMask: boolean,
-    web3: any
+    web3: any,
   ) {
     this.requestUrl = requestUrl;
-    this.hasMetaMask = hasMetaMask
+    this.hasMetaMask = hasMetaMask;
     this.contracts = contracts;
     this.web3 = web3;
   }
@@ -38,21 +42,22 @@ export default class CargoApi {
   }
 
   request(path, options?: {}) {
-    return fetch(`${this.requestUrl}${path}`, options).then(async (res) => {
-      const json = await res.json();
-      if (res.ok) {
-        return {
-          err: false,
-          data: json,
+    return fetch(`${this.requestUrl}${path}`, options)
+      .then(async res => {
+        const json = await res.json();
+        if (res.ok) {
+          return {
+            err: false,
+            data: json,
+          };
         }
-      }
-      return {
-        err: true,
-        data: json,
-      }
-    }).then(j => j);
+        return {
+          err: true,
+          data: json,
+        };
+      })
+      .then(j => j);
   }
-
 
   // Methods that do not require metamask
   getBeneficiaryBalance(beneficiaryId: string) {
@@ -113,11 +118,11 @@ export default class CargoApi {
     Object.keys(rest).forEach(key => {
       const value = rest[key];
       formData.append(key, value);
-    })
+    });
     return this.request('/v1/mint', {
       method: 'POST',
       body: formData,
-    })
+    });
   }
 
   private getSignature(): Promise<string> {
@@ -147,35 +152,46 @@ export default class CargoApi {
             return reject(new Error(result.error.message));
           }
           resolve(result.result);
-        }
+        },
       );
-    })
-
+    });
   }
 
   private requireMetaMask = () => {
     if (!this.hasMetaMask) {
       throw new Error('Metamask required');
     }
-  }
+  };
 
   private sendTx = options => new Promise((resolve, reject) => {
-    this.web3.eth.sendTransaction(
-      options,
-      (err, tx) => {
-        console.log(err);
-        if (!err) {
-          this.web3.eth.getTransactionReceipt(tx, (err, data) => {
-            if (data.status === '0x00') {
-              reject('reverted');
-            } else {
-              resolve(tx);
-            }
-          });
-        }
+    this.web3.eth.sendTransaction(options, (err, tx) => {
+      console.log(err);
+      if (!err) {
+        this.web3.eth.getTransactionReceipt(tx, (err, data) => {
+          if (data.status === '0x00') {
+            reject('reverted');
+          } else {
+            resolve(tx);
+          }
+        });
       }
-    );
-  })
+    });
+  });
+
+  private promisify = (fn, ...args) => new Promise((resolve, reject) => {
+    fn(...args, (err, tx) => {
+      console.log(err);
+      if (!err) {
+        this.web3.eth.getTransactionReceipt(tx, (err, data) => {
+          if (data.status === '0x00') {
+            reject('reverted');
+          } else {
+            resolve(tx);
+          }
+        });
+      }
+    });
+  });
 
   // Methods that require metamask
   async mint(parameters: TMintParams) {
@@ -188,6 +204,7 @@ export default class CargoApi {
       previewImage,
       name,
       description,
+      metadata,
     } = parameters;
     const signature = await this.getSignature();
     const res = await this.requestMintAbi({
@@ -200,10 +217,13 @@ export default class CargoApi {
       description,
       signature,
       vendorId,
+      metadata,
     });
 
     if (!res.err) {
-      const { data: { abi } } = res;
+      const {
+        data: { abi },
+      } = res;
 
       const tx = await this.sendTx({
         to: tokenAddress,
@@ -215,5 +235,26 @@ export default class CargoApi {
     } else {
       throw new Error(JSON.stringify(res));
     }
+  }
+
+  async createTokenContract(
+    vendorId: string,
+    tokenName: string,
+    symbol: string,
+    limitedSupply: boolean,
+    maxSupply: string,
+  ) {
+    const {
+      cargoAsset: { instance },
+    } = this.contracts;
+
+    console.log(instance);
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.createTokenContract, vendorId, tokenName, symbol, limitedSupply, maxSupply, {
+      from: this.accounts[0],
+    });
+
+    return tx;
   }
 }
