@@ -134,7 +134,7 @@ export default class CargoApi {
       const msgParams = [
         {
           type: 'string',
-          name: 'Message',
+          name: 'I certify that I am the rightful owner of the following address',
           value: this.accounts[0],
         },
       ];
