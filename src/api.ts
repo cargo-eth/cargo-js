@@ -96,6 +96,10 @@ export default class CargoApi {
     return this.request(`/v1/get-token-contract-by-id/${tokenContractId}`);
   }
 
+  getTokenContractByAddress(tokenAddress: string) {
+    return this.request(`/v1/get-token-contract-by-address/${tokenAddress}`);
+  }
+
   getVendorBeneficiaries(vendorId: string) {
     return this.request(`/v1/get-vendor-beneficiaries/${vendorId}`);
   }
@@ -193,7 +197,19 @@ export default class CargoApi {
     });
   });
 
+  private promisifyData = (fn, ...args) => new Promise((resolve, reject) => {
+    fn(...args, (err, data) => {
+      if (!err) {
+        resolve(data);
+      } else {
+        reject(err);
+      }
+    });
+  });
+
   // Methods that require metamask
+
+  // 🦊
   async mint(parameters: TMintParams) {
     this.requireMetaMask();
     const {
@@ -237,9 +253,10 @@ export default class CargoApi {
     }
   }
 
+  // 🦊
   async createTokenContract(
     vendorId: string,
-    tokenName: string,
+    tokenContractName: string,
     symbol: string,
     limitedSupply: boolean,
     maxSupply: string,
@@ -248,13 +265,63 @@ export default class CargoApi {
       cargoAsset: { instance },
     } = this.contracts;
 
-    console.log(instance);
-
     // @ts-ignore
-    const tx = await this.promisify(instance.createTokenContract, vendorId, tokenName, symbol, limitedSupply, maxSupply, {
+    const tx = await this.promisify(instance.createTokenContract, vendorId, tokenContractName, symbol, limitedSupply, maxSupply, {
       from: this.accounts[0],
     });
 
     return tx;
   }
+
+  // 🦊
+  async addVendor(crateId: string, vendorAddress: string) {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.addVendor, crateId, vendorAddress, {
+      from: this.accounts[0],
+    });
+  }
+
+  // 🦊
+  async publicAddVendor(crateId: string) {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.publicAddVendor, crateId, { from: this.accounts[0] });
+
+    return tx;
+  }
+
+  // 🦊
+  async getOwnedTokenIdsByCargoTokenContractId(cargoTokenContractId: string) {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const data = await this.promisifyData(instance.getOwnedTokenIdsByCargoTokenContractId.call, cargoTokenContractId, { from: this.accounts[0] });
+
+    return data;
+  }
+
+  // 🦊
+  async getOwnedCargoTokenContractIds() {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const ownedTokens = await this.promisifyData(instance.getOwnedCargoTokenContractIds.call, { from: this.accounts[0] });
+
+    return ownedTokens;
+  }
+
+  // 🦊
+  async updateBeneficiaryCommission(beneficiaryId: string, commission: string) {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const tx = this.promisify(instance.updateBeneficiaryCommission, beneficiaryId, commission, { from: this.accounts[0] });
+
+    return tx;
+  }
+
+
 }
