@@ -14,6 +14,10 @@ type TMintParams = {
   previewImage: File;
 };
 
+interface TCargoApiInterface {
+  private promisifyData(fn: Function, ...args: Array<*>): Promise<any>
+}
+
 export default class CargoApi {
   requestUrl: string;
 
@@ -24,6 +28,7 @@ export default class CargoApi {
   web3: any;
 
   accounts: Array<string>;
+
 
   constructor(
     contracts: TContracts,
@@ -197,7 +202,8 @@ export default class CargoApi {
     });
   });
 
-  private promisifyData = (fn, ...args) => new Promise((resolve, reject) => {
+  private promisifyData: (fn: Function, ...args: Array<*>) => Promise<any> =
+    (fn, ...args) => new Promise((resolve, reject) => {
     fn(...args, (err, data) => {
       if (!err) {
         resolve(data);
@@ -318,10 +324,51 @@ export default class CargoApi {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
-    const tx = this.promisify(instance.updateBeneficiaryCommission, beneficiaryId, commission, { from: this.accounts[0] });
+    const tx = await this.promisify(instance.updateBeneficiaryCommission, beneficiaryId, commission, { from: this.accounts[0] });
 
     return tx;
   }
 
+  // 🦊
+  async addBeneficiary(vendorId: string, beneficiaryAddress: string, commission: string) {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.addBeneficiary, vendorId, beneficiaryAddress, commission, { from: this.accounts[0] });
+
+    return tx;
+  }
+
+  async getOwnedBeneficiaries() {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const beneficiaries = await this.promisifyData(instance.getOwnedBeneficiaries, { from: accounts[0] });
+
+    return beneficiaries;
+  }
+
+  async getOwnedVendors() {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const vendorIds = await this.promisifyData(instance.getOwnedVendors, { from: this.accounts[0] });
+    const vendors = await Promise.all(vendorIds.map(id => this.getVendorById(id)));
+    return vendors;
+  }
+
+  async getOwnedCrates() {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const crateIds = await this.promisifyData(instance.getOwnedCrates, { from: this.accounts[0] });
+    const crates = await Promise.all(crateIds.map(id => this.getCrateById(id)));
+    return crates;
+  }
+
+  async createCrateWithCallbackContract(publicVendorCreation: boolean, callbackContractAddress: string) {
+    const { cargo: { instance } } = this.contracts;
+
+  }
 
 }
