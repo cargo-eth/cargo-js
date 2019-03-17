@@ -188,6 +188,11 @@ export default class CargoApi {
   });
 
   private promisify = (fn, ...args) => new Promise((resolve, reject) => {
+    try {
+      this.requireMetaMask();
+    } catch (e) {
+      return reject(e);
+    }
     fn(...args, (err, tx) => {
       console.log(err);
       if (!err) {
@@ -202,8 +207,13 @@ export default class CargoApi {
     });
   });
 
-  private promisifyData: (fn: Function, ...args: Array<*>) => Promise<any> =
+  private promisifyData: (fn: Function, ...args: Array<any>) => Promise<any> =
     (fn, ...args) => new Promise((resolve, reject) => {
+    try {
+      this.requireMetaMask();
+    } catch (e) {
+      return reject(e);
+    }
     fn(...args, (err, data) => {
       if (!err) {
         resolve(data);
@@ -339,6 +349,7 @@ export default class CargoApi {
     return tx;
   }
 
+  // 🦊
   async getOwnedBeneficiaries() {
     const { cargo: { instance } } = this.contracts;
 
@@ -348,6 +359,7 @@ export default class CargoApi {
     return beneficiaries;
   }
 
+  // 🦊
   async getOwnedVendors() {
     const { cargo: { instance } } = this.contracts;
 
@@ -357,6 +369,7 @@ export default class CargoApi {
     return vendors;
   }
 
+  // 🦊
   async getOwnedCrates() {
     const { cargo: { instance } } = this.contracts;
 
@@ -366,9 +379,54 @@ export default class CargoApi {
     return crates;
   }
 
+  // 🦊
   async createCrateWithCallbackContract(publicVendorCreation: boolean, callbackContractAddress: string) {
     const { cargo: { instance } } = this.contracts;
 
+    // @ts-ignore
+    const tx = await this.promisify(instance.createCrateWithCallbackContract, publicVendorCreation, callbackContractAddress, { from: this.accounts[0] });
+
+    return tx;
+  }
+
+  // 🦊
+  async createCrate(publicVendorCreation: boolean) {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.createCrate, publicVendorCreation, { from: this.accounts[0] });
+
+    return tx;
+  }
+
+  // 🦊
+  async updateCrateApplicationFee(fee: string, crateId: string) {
+    const { cargo: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.updateCrateApplicationFee, fee, crateId, { from: this.accounts[0] });
+
+    return tx;
+  }
+
+  // 🦊
+  async withdraw(amount: string, beneficiaryId: string, to: string) {
+    const { cargoFunds: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.withdraw, amount, beneficiaryId, to, { from: this.accounts[0] });
+
+    return tx;
+  }
+
+  // 🦊
+  async resellerWithdraw(to: string, amount: string) {
+    const { cargoFunds: { instance } } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.resellerWithdraw, to, amount, { from: this.accounts[0] });
+
+    return tx;
   }
 
 }
