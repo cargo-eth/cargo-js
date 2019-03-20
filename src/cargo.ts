@@ -5,6 +5,7 @@ import Emitter from './events';
 import CargoApi from './api';
 import { Provider } from 'web3/providers';
 import Contract from 'web3/eth/contract';
+import BigNumber from 'bignumber.js';
 
 type TNetwork = 'local' | 'development' | 'production';
 
@@ -59,6 +60,10 @@ class Cargo extends Emitter {
   constructor() {
     super();
   }
+
+  private denominator = new BigNumber(1 * 10 ** 18);
+
+  public getCommission = (percent: number) => this.denominator.times(new BigNumber(percent)).toString()
 
   private setUpWeb3() {
     this.provider = window['ethereum'] || window.web3.currentProvider;

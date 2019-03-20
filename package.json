@@ -5,6 +5,7 @@
   "module": "dist/cargo.esm.js",
   "browser": "dist/cargo.umd.js",
   "dependencies": {
+    "bignumber.js": "^8.1.1",
     "isomorphic-fetch": "^2.2.1",
     "web3": "^0.20.7"
   },
