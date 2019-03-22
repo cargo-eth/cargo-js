@@ -1,15 +1,14 @@
 {
   "name": "@cargo-eth/js",
   "version": "1.0.0",
-  "main": "dist/cargo.cjs.js",
-  "module": "dist/cargo.esm.js",
-  "browser": "dist/cargo.umd.js",
+  "main": "dist/bundle.js",
   "dependencies": {
     "bignumber.js": "^8.1.1",
     "isomorphic-fetch": "^2.2.1",
     "web3": "^0.20.7"
   },
   "devDependencies": {
+    "@types/isomorphic-fetch": "^0.0.35",
     "@types/web3": "^1.0.18",
     "awesome-typescript-loader": "^5.2.1",
     "babel-eslint": "^10.0.1",
@@ -23,11 +22,12 @@
     "source-map-loader": "^0.2.4",
     "typescript": "^3.3.3333",
     "webpack": "^4.29.6",
-    "webpack-cli": "^3.2.3"
+    "webpack-cli": "^3.2.3",
+    "webpack-merge": "^4.2.1"
   },
   "scripts": {
-    "build": "rollup -c",
-    "dev": "REQUEST_URL='http://localhost:3000' yarn webpack --watch --config ./webpack.config.js",
+    "build": "REQUEST_URL='http://localhost:3000' yarn webpack --config ./webpack.prod.js",
+    "dev": "REQUEST_URL='http://localhost:3000' yarn webpack --watch --config ./webpack.dev.js",
     "test": "node test/test.js",
     "pretest": "npm run build"
   },

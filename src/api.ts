@@ -1,4 +1,4 @@
-import fetch from 'isomorphic-fetch';
+import * as fetch from 'isomorphic-fetch';
 import { TContracts, TContractNames } from './cargo';
 
 type TMintParams = {
@@ -15,7 +15,7 @@ type TMintParams = {
 };
 
 interface TCargoApiInterface {
-  private promisifyData(fn: Function, ...args: Array<*>): Promise<any>
+  promisifyData(fn: Function, ...args: Array<any>): Promise<any>
 }
 
 export default class CargoApi {
@@ -42,11 +42,11 @@ export default class CargoApi {
     this.web3 = web3;
   }
 
-  setAccounts(accounts: Array<string>) {
+  setAccounts = (accounts: Array<string>) => {
     this.accounts = accounts;
   }
 
-  request(path, options?: {}) {
+  request = (path: string, options?: {}) => {
     return fetch(`${this.requestUrl}${path}`, options)
       .then(async res => {
         const json = await res.json();
@@ -65,66 +65,67 @@ export default class CargoApi {
   }
 
   // Methods that do not require metamask
-  getBeneficiaryBalance(beneficiaryId: string) {
+  getBeneficiaryBalance = (beneficiaryId: string) => {
     return this.request(`/v1/get-beneficiary-balance/${beneficiaryId}`);
   }
 
-  getBeneficiaryById(beneficiaryId: string) {
+  getBeneficiaryById = (beneficiaryId: string) => {
     return this.request(`/v1/get-beneficiary-by-id/${beneficiaryId}`);
   }
 
-  getBeneficiaryVendor(beneficiaryId: string) {
+  getBeneficiaryVendor = (beneficiaryId: string) => {
     return this.request(`/v1/get-beneficiary-vendor/${beneficiaryId}`);
   }
 
-  getContract(contract: TContractNames) {
+  getContract = (contract: TContractNames) => {
     return this.request(`/v1/get-contract/${contract}`);
   }
 
-  getCrateById(crateId: string) {
+  getCrateById = (crateId: string) => {
     return this.request(`/v1/get-crate-by-id/${crateId}`);
   }
 
-  getCrateVendors(crateId: string) {
+  getCrateVendors = (crateId: string) => {
     return this.request(`/v1/get-crate-vendors/${crateId}`);
   }
 
-  getMintedTokens(tokenAddress: string) {
+  getMintedTokens = (tokenAddress: string) => {
     return this.request(`/v1/get-minted-tokens/${tokenAddress}`);
   }
 
-  getResellerBalance(resellerAddress: string) {
+  getResellerBalance = (resellerAddress: string) => {
     return this.request(`/v1/get-reseller-balance/${resellerAddress}`);
   }
 
-  getTokenContractById(tokenContractId: string) {
+  getTokenContractById = (tokenContractId: string) => {
     return this.request(`/v1/get-token-contract-by-id/${tokenContractId}`);
   }
 
-  getTokenContractByAddress(tokenAddress: string) {
+  getTokenContractByAddress = (tokenAddress: string) => {
     return this.request(`/v1/get-token-contract-by-address/${tokenAddress}`);
   }
 
-  getVendorBeneficiaries(vendorId: string) {
+  getVendorBeneficiaries = (vendorId: string) => {
     return this.request(`/v1/get-vendor-beneficiaries/${vendorId}`);
   }
 
-  getVendorById(vendorId: string) {
+  getVendorById = (vendorId: string) => {
     return this.request(`/v1/get-vendor-by-id/${vendorId}`);
   }
 
-  getVendorCrate(vendorId: string) {
+  getVendorCrate = (vendorId: string) => {
     return this.request(`/v1/get-vendor-crate/${vendorId}`);
   }
 
-  getVendorTokenContracts(vendorId: string) {
+  getVendorTokenContracts = (vendorId: string) => {
     return this.request(`/v1/get-vendor-token-contracts/${vendorId}`);
   }
 
-  private requestMintAbi(parameters: TMintParams) {
+  private requestMintAbi = (parameters: TMintParams) => {
     const formData = new FormData();
     const { files, previewImage, ...rest } = parameters;
     Object.keys(rest).forEach(key => {
+      // @ts-ignore
       const value = rest[key];
       formData.append(key, value);
     });
@@ -134,7 +135,7 @@ export default class CargoApi {
     });
   }
 
-  private getSignature(): Promise<string> {
+  private getSignature = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       const msgParams = [
         {
@@ -155,7 +156,7 @@ export default class CargoApi {
           params,
           from,
         },
-        (err, result) => {
+        (err: Error, result: any) => {
           if (err) return reject(new Error(err.message));
           if (result.error) {
             return reject(new Error(result.error.message));
@@ -172,11 +173,11 @@ export default class CargoApi {
     }
   };
 
-  private sendTx = options => new Promise((resolve, reject) => {
-    this.web3.eth.sendTransaction(options, (err, tx) => {
+  private sendTx = (options: Object) => new Promise((resolve, reject) => {
+    this.web3.eth.sendTransaction(options, (err: Error, tx: string) => {
       console.log(err);
       if (!err) {
-        this.web3.eth.getTransactionReceipt(tx, (err, data) => {
+        this.web3.eth.getTransactionReceipt(tx, (err: Error, data: any) => {
           if (data.status === '0x00') {
             reject('reverted');
           } else {
@@ -187,15 +188,19 @@ export default class CargoApi {
     });
   });
 
+  // @ts-ignore
   private promisify = (fn, ...args) => new Promise((resolve, reject) => {
     try {
       this.requireMetaMask();
     } catch (e) {
       return reject(e);
     }
+
+    // @ts-ignore
     fn(...args, (err, tx) => {
       console.log(err);
       if (!err) {
+        // @ts-ignore
         this.web3.eth.getTransactionReceipt(tx, (err, data) => {
           if (data.status === '0x00') {
             reject('reverted');
@@ -214,6 +219,8 @@ export default class CargoApi {
     } catch (e) {
       return reject(e);
     }
+
+    // @ts-ignore
     fn(...args, (err, data) => {
       if (!err) {
         resolve(data);
@@ -226,7 +233,7 @@ export default class CargoApi {
   // Methods that require metamask
 
   // 🦊
-  async mint(parameters: TMintParams) {
+  mint = async (parameters: TMintParams) => {
     this.requireMetaMask();
     const {
       tokenAddress,
@@ -270,13 +277,13 @@ export default class CargoApi {
   }
 
   // 🦊
-  async createTokenContract(
+   createTokenContract = async (
     vendorId: string,
     tokenContractName: string,
     symbol: string,
     limitedSupply: boolean,
     maxSupply: string,
-  ) {
+  ) => {
     const {
       cargoAsset: { instance },
     } = this.contracts;
@@ -290,7 +297,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async addVendor(crateId: string, vendorAddress: string) {
+  addVendor = async (crateId: string, vendorAddress: string) => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -300,7 +307,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async publicAddVendor(crateId: string) {
+  publicAddVendor = async (crateId: string) => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -310,7 +317,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async getOwnedTokenIdsByCargoTokenContractId(cargoTokenContractId: string) {
+  getOwnedTokenIdsByCargoTokenContractId = async (cargoTokenContractId: string) => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -320,7 +327,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async getOwnedCargoTokenContractIds() {
+  getOwnedCargoTokenContractIds = async () => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -330,7 +337,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async updateBeneficiaryCommission(beneficiaryId: string, commission: string) {
+  updateBeneficiaryCommission = async (beneficiaryId: string, commission: string) => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -340,7 +347,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async addBeneficiary(vendorId: string, beneficiaryAddress: string, commission: string) {
+  addBeneficiary = async (vendorId: string, beneficiaryAddress: string, commission: string) => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -350,7 +357,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async getOwnedBeneficiaries() {
+  getOwnedBeneficiaries = async () => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -360,27 +367,27 @@ export default class CargoApi {
   }
 
   // 🦊
-  async getOwnedVendors() {
+  getOwnedVendors = async () => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
     const vendorIds = await this.promisifyData(instance.getOwnedVendors, { from: this.accounts[0] });
-    const vendors = await Promise.all(vendorIds.map(id => this.getVendorById(id)));
+    const vendors = await Promise.all(vendorIds.map((id: string) => this.getVendorById(id)));
     return vendors;
   }
 
   // 🦊
-  async getOwnedCrates() {
+  getOwnedCrates = async () =>  {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
     const crateIds = await this.promisifyData(instance.getOwnedCrates, { from: this.accounts[0] });
-    const crates = await Promise.all(crateIds.map(id => this.getCrateById(id)));
+    const crates = await Promise.all(crateIds.map((id: string) => this.getCrateById(id)));
     return crates;
   }
 
   // 🦊
-  async createCrateWithCallbackContract(publicVendorCreation: boolean, callbackContractAddress: string) {
+  createCrateWithCallbackContract = async (publicVendorCreation: boolean, callbackContractAddress: string) => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -390,7 +397,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async createCrate(publicVendorCreation: boolean) {
+  createCrate = async (publicVendorCreation: boolean) => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -400,7 +407,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async updateCrateApplicationFee(fee: string, crateId: string) {
+  updateCrateApplicationFee = async (fee: string, crateId: string) => {
     const { cargo: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -410,7 +417,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async withdraw(amount: string, beneficiaryId: string, to: string) {
+  withdraw = async (amount: string, beneficiaryId: string, to: string) => {
     const { cargoFunds: { instance } } = this.contracts;
 
     // @ts-ignore
@@ -420,7 +427,7 @@ export default class CargoApi {
   }
 
   // 🦊
-  async resellerWithdraw(to: string, amount: string) {
+  resellerWithdraw = async (to: string, amount: string) => {
     const { cargoFunds: { instance } } = this.contracts;
 
     // @ts-ignore

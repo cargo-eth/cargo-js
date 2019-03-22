@@ -1,8 +1,8 @@
 // @flow
-import fetch from 'isomorphic-fetch';
+import * as fetch from 'isomorphic-fetch';
 
-export default async requestUrl => {
-  const url = name => `${requestUrl}/v1/get-contract/${name}`;
+export default async (requestUrl: string) => {
+  const url = (name: string) => `${requestUrl}/v1/get-contract/${name}`;
   const contracts = await Promise.all(
     [
       'cargo',
@@ -22,6 +22,7 @@ export default async requestUrl => {
   );
 
   return contracts.reduce((a, b) => {
+    // @ts-ignore
     a[b.name] = b;
     return a;
   }, {});

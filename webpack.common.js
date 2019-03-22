@@ -11,17 +11,10 @@ module.exports = {
     libraryTarget: 'umd',
   },
 
-  // Enable sourcemaps for debugging webpack's output.
-  devtool: 'source-map',
-
   resolve: {
     // Add '.ts' and '.tsx' as resolvable extensions.
     extensions: ['.ts', '.tsx', '.js', '.json'],
   },
-
-  watch: true,
-
-  mode: 'development',
 
   plugins: [new CheckerPlugin()],
 

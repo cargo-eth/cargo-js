@@ -1,10 +1,11 @@
-// @flow
+// @ts-ignore
 import Web3 from 'web3';
 import getAllContracts from './getAllContracts';
 import Emitter from './events';
 import CargoApi from './api';
 import { Provider } from 'web3/providers';
 import Contract from 'web3/eth/contract';
+// @ts-ignore
 import BigNumber from 'bignumber.js';
 
 type TNetwork = 'local' | 'development' | 'production';
@@ -65,21 +66,24 @@ class Cargo extends Emitter {
 
   public getCommission = (percent: number) => this.denominator.times(new BigNumber(percent)).toString()
 
-  private setUpWeb3() {
-    this.provider = window['ethereum'] || window.web3.currentProvider;
+  private setUpWeb3 = () => {
+    this.provider = window['ethereum'] || (window.web3 && window.web3.currentProvider);
     if (this.provider) {
       const web3 = new Web3(this.provider);
       this.web3 = web3;
       window.web3 = web3;
       this.initializeContracts();
+      return true;
     } else {
       this.emit('metamask-required');
       this.metaMaskRequired = true;
+      return false;
     }
   }
 
-  private initializeContracts() {
+  private initializeContracts = () => {
     Object.keys(this.contracts).forEach(name => {
+      // @ts-ignore
       const data = this.contracts[name];
       if (name !== 'cargoToken') {
         // @ts-ignore
@@ -90,17 +94,24 @@ class Cargo extends Emitter {
     });
   }
 
-  public init = async (options) => {
+  // @ts-ignore
+  public init = async (options): Promise<'success' | 'metamask-required'> => {
     this.options = {
       ...DEFAULT_OPTIONS,
       ...options,
     };
     this.requestUrl = REQUEST_URLS[this.options.network];
+    // @ts-ignore
     this.contracts = await getAllContracts(this.requestUrl);
-    this.setUpWeb3();
-    this.api = new CargoApi(this.contracts, this.requestUrl, !this.metaMaskRequired, this.web3);
-    this.emit('initialized');
-    this.initialized = true;
+    if (this.setUpWeb3()) {
+      this.api = new CargoApi(this.contracts, this.requestUrl, !this.metaMaskRequired, this.web3);
+      this.emit('initialized');
+      this.initialized = true;
+      return 'success';
+    } else {
+      return 'metamask-required';
+    }
+
   };
 
   public enable = async () => {

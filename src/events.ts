@@ -1,6 +1,6 @@
 
 export default class Emitter {
-  private listeners: { [property: string]: Set<(any) => any> };
+  private listeners: { [property: string]: Set<(key: any) => any> };
   constructor() {
     this.listeners = {};
   }
@@ -14,13 +14,13 @@ export default class Emitter {
       event.add(fn);
     }
   }
-  public off(evt: string, fn) {
+  public off(evt: string, fn: any) {
     const event = this.listeners[evt];
     if (event) {
       event.delete(fn);
     }
   }
-  public removeAllListeners(evt) {
+  public removeAllListeners(evt: string) {
     this.listeners[evt] = void 0;
   }
   public emit(evt: string, data?: any) {
