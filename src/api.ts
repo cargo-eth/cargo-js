@@ -3,19 +3,17 @@ import { TContracts, TContractNames } from './cargo';
 
 type TMintParams = {
   hasFiles: boolean;
-  signature?: string;
-  account?: string;
   vendorId: string;
   tokenAddress: string;
   name?: string;
   description?: string;
   metadata?: string;
-  files: FileList;
+  files: File[];
   previewImage: File;
 };
 
 interface TCargoApiInterface {
-  promisifyData(fn: Function, ...args: Array<any>): Promise<any>
+  promisifyData(fn: Function, ...args: Array<any>): Promise<any>;
 }
 
 export default class CargoApi {
@@ -28,7 +26,6 @@ export default class CargoApi {
   web3: any;
 
   accounts: Array<string>;
-
 
   constructor(
     contracts: TContracts,
@@ -44,86 +41,68 @@ export default class CargoApi {
 
   setAccounts = (accounts: Array<string>) => {
     this.accounts = accounts;
-  }
+  };
 
-  request = (path: string, options?: {}) => {
-    return fetch(`${this.requestUrl}${path}`, options)
-      .then(async res => {
-        const json = await res.json();
-        if (res.ok) {
-          return {
-            err: false,
-            data: json,
-          };
-        }
+  request = (path: string, options?: {}) => fetch(`${this.requestUrl}${path}`, options)
+    .then(async res => {
+      const json = await res.json();
+      if (res.ok) {
         return {
-          err: true,
+          err: false,
           data: json,
         };
-      })
-      .then(j => j);
-  }
+      }
+      return {
+        err: true,
+        data: json,
+      };
+    })
+    .then(j => j);
 
   // Methods that do not require metamask
-  getBeneficiaryBalance = (beneficiaryId: string) => {
-    return this.request(`/v1/get-beneficiary-balance/${beneficiaryId}`);
-  }
+  getBeneficiaryBalance = (beneficiaryId: string) => this.request(`/v1/get-beneficiary-balance/${beneficiaryId}`);
 
-  getBeneficiaryById = (beneficiaryId: string) => {
-    return this.request(`/v1/get-beneficiary-by-id/${beneficiaryId}`);
-  }
+  getBeneficiaryById = (beneficiaryId: string) => this.request(`/v1/get-beneficiary-by-id/${beneficiaryId}`);
 
-  getBeneficiaryVendor = (beneficiaryId: string) => {
-    return this.request(`/v1/get-beneficiary-vendor/${beneficiaryId}`);
-  }
+  getBeneficiaryVendor = (beneficiaryId: string) => this.request(`/v1/get-beneficiary-vendor/${beneficiaryId}`);
 
-  getContract = (contract: TContractNames) => {
-    return this.request(`/v1/get-contract/${contract}`);
-  }
+  getContract = (contract: TContractNames) => this.request(`/v1/get-contract/${contract}`);
 
-  getCrateById = (crateId: string) => {
-    return this.request(`/v1/get-crate-by-id/${crateId}`);
-  }
+  getCrateById = (crateId: string) => this.request(`/v1/get-crate-by-id/${crateId}`);
 
-  getCrateVendors = (crateId: string) => {
-    return this.request(`/v1/get-crate-vendors/${crateId}`);
-  }
+  getCrateVendors = (crateId: string) => this.request(`/v1/get-crate-vendors/${crateId}`);
 
-  getMintedTokens = (tokenAddress: string) => {
-    return this.request(`/v1/get-minted-tokens/${tokenAddress}`);
-  }
+  getMintedTokens = (tokenAddress: string) => this.request(`/v1/get-minted-tokens/${tokenAddress}`);
 
-  getResellerBalance = (resellerAddress: string) => {
-    return this.request(`/v1/get-reseller-balance/${resellerAddress}`);
-  }
+  getResellerBalance = (resellerAddress: string) => this.request(`/v1/get-reseller-balance/${resellerAddress}`);
 
-  getTokenContractById = (tokenContractId: string) => {
-    return this.request(`/v1/get-token-contract-by-id/${tokenContractId}`);
-  }
+  getTokenContractById = (tokenContractId: string) => this.request(`/v1/get-token-contract-by-id/${tokenContractId}`);
 
-  getTokenContractByAddress = (tokenAddress: string) => {
-    return this.request(`/v1/get-token-contract-by-address/${tokenAddress}`);
-  }
+  getTokenContractByAddress = (tokenAddress: string) => this.request(`/v1/get-token-contract-by-address/${tokenAddress}`);
 
-  getVendorBeneficiaries = (vendorId: string) => {
-    return this.request(`/v1/get-vendor-beneficiaries/${vendorId}`);
-  }
+  getVendorBeneficiaries = (vendorId: string) => this.request(`/v1/get-vendor-beneficiaries/${vendorId}`);
 
-  getVendorById = (vendorId: string) => {
-    return this.request(`/v1/get-vendor-by-id/${vendorId}`);
-  }
+  getVendorById = (vendorId: string) => this.request(`/v1/get-vendor-by-id/${vendorId}`);
 
-  getVendorCrate = (vendorId: string) => {
-    return this.request(`/v1/get-vendor-crate/${vendorId}`);
-  }
+  getVendorCrate = (vendorId: string) => this.request(`/v1/get-vendor-crate/${vendorId}`);
 
-  getVendorTokenContracts = (vendorId: string) => {
-    return this.request(`/v1/get-vendor-token-contracts/${vendorId}`);
-  }
+  getVendorTokenContracts = (vendorId: string) => this.request(`/v1/get-vendor-token-contracts/${vendorId}`);
 
-  private requestMintAbi = (parameters: TMintParams) => {
+  private requestMintAbi = (
+    parameters: TMintParams & { signature: string; account: string },
+  ) => {
     const formData = new FormData();
-    const { files, previewImage, ...rest } = parameters;
+    const { files = [], previewImage, ...rest } = parameters;
+    if (files.length > 0) {
+      files.forEach(file => {
+        formData.append('file', file);
+      });
+    }
+
+    if (previewImage) {
+      formData.append('previewImage', previewImage);
+    }
+
     Object.keys(rest).forEach(key => {
       // @ts-ignore
       const value = rest[key];
@@ -133,39 +112,38 @@ export default class CargoApi {
       method: 'POST',
       body: formData,
     });
-  }
+  };
 
-  private getSignature = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const msgParams = [
-        {
-          type: 'string',
-          name: 'I certify that I am the rightful owner of the following address',
-          value: this.accounts[0],
-        },
-      ];
+  private getSignature = (): Promise<string> => new Promise((resolve, reject) => {
+    const msgParams = [
+      {
+        type: 'string',
+        name:
+            'I certify that I am the rightful owner of the following address',
+        value: this.accounts[0],
+      },
+    ];
 
-      const from = this.accounts[0];
+    const from = this.accounts[0];
 
-      const params = [msgParams, from];
-      const method = 'eth_signTypedData';
+    const params = [msgParams, from];
+    const method = 'eth_signTypedData';
 
-      this.web3.currentProvider.sendAsync(
-        {
-          method,
-          params,
-          from,
-        },
-        (err: Error, result: any) => {
-          if (err) return reject(new Error(err.message));
-          if (result.error) {
-            return reject(new Error(result.error.message));
-          }
-          resolve(result.result);
-        },
-      );
-    });
-  }
+    this.web3.currentProvider.sendAsync(
+      {
+        method,
+        params,
+        from,
+      },
+      (err: Error, result: any) => {
+        if (err) return reject(new Error(err.message));
+        if (result.error) {
+          return reject(new Error(result.error.message));
+        }
+        resolve(result.result);
+      },
+    );
+  });
 
   private requireMetaMask = () => {
     if (!this.hasMetaMask) {
@@ -212,8 +190,10 @@ export default class CargoApi {
     });
   });
 
-  private promisifyData: (fn: Function, ...args: Array<any>) => Promise<any> =
-    (fn, ...args) => new Promise((resolve, reject) => {
+  private promisifyData: (fn: Function, ...args: Array<any>) => Promise<any> = (
+    fn,
+    ...args
+  ) => new Promise((resolve, reject) => {
     try {
       this.requireMetaMask();
     } catch (e) {
@@ -244,10 +224,11 @@ export default class CargoApi {
       name,
       description,
       metadata,
+      to,
     } = parameters;
     const signature = await this.getSignature();
     const res = await this.requestMintAbi({
-      account: this.accounts[0],
+      account: to || this.accounts[0],
       tokenAddress,
       hasFiles,
       files,
@@ -274,10 +255,10 @@ export default class CargoApi {
     } else {
       throw new Error(JSON.stringify(res));
     }
-  }
+  };
 
   // 🦊
-   createTokenContract = async (
+  createTokenContract = async (
     vendorId: string,
     tokenContractName: string,
     symbol: string,
@@ -288,152 +269,261 @@ export default class CargoApi {
       cargoAsset: { instance },
     } = this.contracts;
 
-    // @ts-ignore
-    const tx = await this.promisify(instance.createTokenContract, vendorId, tokenContractName, symbol, limitedSupply, maxSupply, {
-      from: this.accounts[0],
-    });
+    const tx = await this.promisify(
+      // @ts-ignore
+      instance.createTokenContract,
+      vendorId,
+      tokenContractName,
+      symbol,
+      limitedSupply,
+      maxSupply,
+      {
+        from: this.accounts[0],
+      },
+    );
 
     return tx;
-  }
+  };
 
   // 🦊
   addVendor = async (crateId: string, vendorAddress: string) => {
-    const { cargo: { instance } } = this.contracts;
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
-    // @ts-ignore
-    const tx = await this.promisify(instance.addVendor, crateId, vendorAddress, {
-      from: this.accounts[0],
-    });
-  }
+    const tx = await this.promisify(
+      // @ts-ignore
+      instance.addVendor,
+      crateId,
+      vendorAddress,
+      {
+        from: this.accounts[0],
+      },
+    );
+  };
 
   // 🦊
   publicAddVendor = async (crateId: string) => {
-    const { cargo: { instance } } = this.contracts;
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
     // @ts-ignore
-    const tx = await this.promisify(instance.publicAddVendor, crateId, { from: this.accounts[0] });
+    const tx = await this.promisify(instance.publicAddVendor, crateId, {
+      from: this.accounts[0],
+    });
 
     return tx;
-  }
+  };
 
   // 🦊
-  getOwnedTokenIdsByCargoTokenContractId = async (cargoTokenContractId: string) => {
-    const { cargo: { instance } } = this.contracts;
+  getOwnedTokenIdsByCargoTokenContractId = async (
+    cargoTokenContractId: string,
+  ) => {
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
-    // @ts-ignore
-    const data = await this.promisifyData(instance.getOwnedTokenIdsByCargoTokenContractId.call, cargoTokenContractId, { from: this.accounts[0] });
+    const data = await this.promisifyData(
+      // @ts-ignore
+
+      instance.getOwnedTokenIdsByCargoTokenContractId.call,
+      cargoTokenContractId,
+      { from: this.accounts[0] },
+    );
 
     return data;
-  }
+  };
 
   // 🦊
   getOwnedCargoTokenContractIds = async () => {
-    const { cargo: { instance } } = this.contracts;
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
-    // @ts-ignore
-    const ownedTokens = await this.promisifyData(instance.getOwnedCargoTokenContractIds.call, { from: this.accounts[0] });
+    const ownedTokens = await this.promisifyData(
+      // @ts-ignore
+      instance.getOwnedCargoTokenContractIds.call,
+      { from: this.accounts[0] },
+    );
 
     return ownedTokens;
-  }
+  };
 
   // 🦊
-  updateBeneficiaryCommission = async (beneficiaryId: string, commission: string) => {
-    const { cargo: { instance } } = this.contracts;
+  updateBeneficiaryCommission = async (
+    beneficiaryId: string,
+    commission: string,
+  ) => {
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
-    // @ts-ignore
-    const tx = await this.promisify(instance.updateBeneficiaryCommission, beneficiaryId, commission, { from: this.accounts[0] });
+    const tx = await this.promisify(
+      // @ts-ignore
+      instance.updateBeneficiaryCommission,
+      beneficiaryId,
+      commission,
+      { from: this.accounts[0] },
+    );
 
     return tx;
-  }
+  };
 
   // 🦊
-  addBeneficiary = async (vendorId: string, beneficiaryAddress: string, commission: string) => {
-    const { cargo: { instance } } = this.contracts;
+  addBeneficiary = async (
+    vendorId: string,
+    beneficiaryAddress: string,
+    commission: string,
+  ) => {
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
     // @ts-ignore
-    const tx = await this.promisify(instance.addBeneficiary, vendorId, beneficiaryAddress, commission, { from: this.accounts[0] });
+    const tx = await this.promisify(
+      // @ts-ignore
+      instance.addBeneficiary,
+      vendorId,
+      beneficiaryAddress,
+      commission,
+      { from: this.accounts[0] },
+    );
 
     return tx;
-  }
+  };
 
   // 🦊
   getOwnedBeneficiaries = async () => {
-    const { cargo: { instance } } = this.contracts;
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
     // @ts-ignore
-    const beneficiaries = await this.promisifyData(instance.getOwnedBeneficiaries, { from: accounts[0] });
+    const beneficiaries = await this.promisifyData(
+      // @ts-ignore
+      instance.getOwnedBeneficiaries,
+      { from: this.accounts[0] },
+    );
 
     return beneficiaries;
-  }
+  };
 
   // 🦊
   getOwnedVendors = async () => {
-    const { cargo: { instance } } = this.contracts;
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
     // @ts-ignore
-    const vendorIds = await this.promisifyData(instance.getOwnedVendors, { from: this.accounts[0] });
-    const vendors = await Promise.all(vendorIds.map((id: string) => this.getVendorById(id)));
+    const vendorIds = await this.promisifyData(instance.getOwnedVendors, {
+      from: this.accounts[0],
+    });
+    const vendors = await Promise.all(
+      vendorIds.map((id: string) => this.getVendorById(id)),
+    );
     return vendors;
-  }
+  };
 
   // 🦊
-  getOwnedCrates = async () =>  {
-    const { cargo: { instance } } = this.contracts;
+  getOwnedCrates = async () => {
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
     // @ts-ignore
-    const crateIds = await this.promisifyData(instance.getOwnedCrates, { from: this.accounts[0] });
-    const crates = await Promise.all(crateIds.map((id: string) => this.getCrateById(id)));
+    const crateIds = await this.promisifyData(instance.getOwnedCrates, {
+      from: this.accounts[0],
+    });
+    const crates = await Promise.all(
+      crateIds.map((id: string) => this.getCrateById(id)),
+    );
     return crates;
-  }
+  };
 
   // 🦊
-  createCrateWithCallbackContract = async (publicVendorCreation: boolean, callbackContractAddress: string) => {
-    const { cargo: { instance } } = this.contracts;
+  createCrateWithCallbackContract = async (
+    publicVendorCreation: boolean,
+    callbackContractAddress: string,
+  ) => {
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
-    // @ts-ignore
-    const tx = await this.promisify(instance.createCrateWithCallbackContract, publicVendorCreation, callbackContractAddress, { from: this.accounts[0] });
+    const tx = await this.promisify(
+      // @ts-ignore
+      instance.createCrateWithCallbackContract,
+      publicVendorCreation,
+      callbackContractAddress,
+      { from: this.accounts[0] },
+    );
 
     return tx;
-  }
+  };
 
   // 🦊
   createCrate = async (publicVendorCreation: boolean) => {
-    const { cargo: { instance } } = this.contracts;
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
-    // @ts-ignore
-    const tx = await this.promisify(instance.createCrate, publicVendorCreation, { from: this.accounts[0] });
+    const tx = await this.promisify(
+      // @ts-ignore
+      instance.createCrate,
+      publicVendorCreation,
+      { from: this.accounts[0] },
+    );
 
     return tx;
-  }
+  };
 
   // 🦊
   updateCrateApplicationFee = async (fee: string, crateId: string) => {
-    const { cargo: { instance } } = this.contracts;
+    const {
+      cargo: { instance },
+    } = this.contracts;
 
     // @ts-ignore
-    const tx = await this.promisify(instance.updateCrateApplicationFee, fee, crateId, { from: this.accounts[0] });
+    const tx = await this.promisify(
+      // @ts-ignore
+      instance.updateCrateApplicationFee,
+      fee,
+      crateId,
+      { from: this.accounts[0] },
+    );
 
     return tx;
-  }
+  };
 
   // 🦊
   withdraw = async (amount: string, beneficiaryId: string, to: string) => {
-    const { cargoFunds: { instance } } = this.contracts;
+    const {
+      cargoFunds: { instance },
+    } = this.contracts;
 
-    // @ts-ignore
-    const tx = await this.promisify(instance.withdraw, amount, beneficiaryId, to, { from: this.accounts[0] });
+    const tx = await this.promisify(
+      // @ts-ignore
+      instance.withdraw,
+      amount,
+      beneficiaryId,
+      to,
+      { from: this.accounts[0] },
+    );
 
     return tx;
-  }
+  };
 
   // 🦊
   resellerWithdraw = async (to: string, amount: string) => {
-    const { cargoFunds: { instance } } = this.contracts;
+    const {
+      cargoFunds: { instance },
+    } = this.contracts;
 
     // @ts-ignore
-    const tx = await this.promisify(instance.resellerWithdraw, to, amount, { from: this.accounts[0] });
+    const tx = await this.promisify(instance.resellerWithdraw, to, amount, {
+      from: this.accounts[0],
+    });
 
     return tx;
-  }
-
+  };
 }

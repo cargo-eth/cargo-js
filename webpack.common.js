@@ -1,5 +1,3 @@
-const { CheckerPlugin } = require('awesome-typescript-loader');
-
 module.exports = {
   entry: './src/main.ts',
   output: {
@@ -15,8 +13,6 @@ module.exports = {
     // Add '.ts' and '.tsx' as resolvable extensions.
     extensions: ['.ts', '.tsx', '.js', '.json'],
   },
-
-  plugins: [new CheckerPlugin()],
 
   module: {
     rules: [
