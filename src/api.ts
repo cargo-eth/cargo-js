@@ -1,5 +1,5 @@
 import * as fetch from 'isomorphic-fetch';
-import { TContracts, TContractNames } from './cargo';
+import Cargo, { TContracts, TContractNames } from './cargo';
 
 type TMintParams = {
   hasFiles: boolean;
@@ -27,16 +27,20 @@ export default class CargoApi {
 
   accounts: Array<string>;
 
+  cargo: Cargo;
+
   constructor(
     contracts: TContracts,
     requestUrl: string,
     hasMetaMask: boolean,
     web3: any,
+    cargo: Cargo,
   ) {
     this.requestUrl = requestUrl;
     this.hasMetaMask = hasMetaMask;
     this.contracts = contracts;
     this.web3 = web3;
+    this.cargo = cargo;
   }
 
   setAccounts = (accounts: Array<string>) => {
@@ -314,6 +318,15 @@ export default class CargoApi {
     });
 
     return tx;
+  };
+
+  // 🦊
+  sellOwnedToken = async (
+    tokenAddress: string,
+    tokenId: string,
+    price: string,
+  ) => {
+    const instance = this.cargo.createCargoTokenInstance(tokenAddress);
   };
 
   // 🦊
