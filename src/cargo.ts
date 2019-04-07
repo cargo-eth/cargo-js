@@ -68,8 +68,11 @@ class Cargo extends Emitter {
 
   provider: Provider;
 
+  BigNumber: BigNumber;
+
   constructor() {
     super();
+    this.BigNumber = BigNumber;
   }
 
   private denominator = new BigNumber(1 * 10 ** 18);

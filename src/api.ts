@@ -92,6 +92,12 @@ export default class CargoApi {
 
   getVendorTokenContracts = (vendorId: string) => this.request(`/v1/get-vendor-token-contracts/${vendorId}`);
 
+  getOwnedResaleItems = (address: string) => this.request(`/v1/get-owned-resale-items/${address}`);
+
+  getContractResaleItems = (contracts: Array<string>) => this.request(
+    `/v1/get-contract-resale-items?contractIds=${JSON.stringify(contracts)}`,
+  );
+
   private requestMintAbi = (
     parameters: TMintParams & { signature: string; account: string },
   ) => {
@@ -325,8 +331,14 @@ export default class CargoApi {
     tokenAddress: string,
     tokenId: string,
     price: string,
+    fromVendor: boolean,
   ) => {
     const instance = this.cargo.createCargoTokenInstance(tokenAddress);
+    const tx = await this.promisify(instance.sell, tokenId, price, fromVendor, {
+      from: this.accounts[0],
+    });
+
+    return tx;
   };
 
   // 🦊
