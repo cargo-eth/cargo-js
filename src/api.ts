@@ -268,6 +268,20 @@ export default class CargoApi {
   };
 
   // 🦊
+  cancelTokenSale = async (resaleItemId: string) => {
+    const {
+      cargoSell: { instance },
+    } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.cancelSale, resaleItemId, {
+      from: this.accounts[0],
+    });
+
+    return tx;
+  };
+
+  // 🦊
   createTokenContract = async (
     vendorId: string,
     tokenContractName: string,
