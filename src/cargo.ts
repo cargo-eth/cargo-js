@@ -2,11 +2,11 @@
 import Web3 from 'web3';
 import { Provider } from 'web3/providers';
 import Contract from 'web3/eth/contract';
+// @ts-ignore
 import BigNumber from 'bignumber.js';
 import getAllContracts from './getAllContracts';
 import Emitter from './events';
 import CargoApi from './api';
-// @ts-ignore
 
 type TNetwork = 'local' | 'development' | 'production';
 
@@ -42,7 +42,7 @@ const DEFAULT_OPTIONS: TCargoOptions = {
 };
 
 const REQUEST_URLS: { [N in TNetwork]: string } = {
-  local: 'http://localhost:3000',
+  local: 'http://localhost:3333',
   development: '',
   production: '',
 };

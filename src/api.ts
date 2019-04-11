@@ -10,6 +10,7 @@ type TMintParams = {
   metadata?: string;
   files: File[];
   previewImage: File;
+  to?: string;
 };
 
 interface TCargoApiInterface {
@@ -363,13 +364,18 @@ export default class CargoApi {
       cargo: { instance },
     } = this.contracts;
 
-    const data = await this.promisifyData(
-      // @ts-ignore
+    let data: Array<Object>;
 
-      instance.getOwnedTokenIdsByCargoTokenContractId.call,
-      cargoTokenContractId,
-      { from: this.accounts[0] },
-    );
+    try {
+      data = await this.promisifyData(
+        // @ts-ignore
+        instance.getOwnedTokenIdsByCargoTokenContractId.call,
+        cargoTokenContractId,
+        { from: this.accounts[0] },
+      );
+    } catch (e) {
+      data = [];
+    }
 
     return data;
   };
@@ -382,7 +388,7 @@ export default class CargoApi {
 
     const ownedTokens = await this.promisifyData(
       // @ts-ignore
-      instance.getOwnedCargoTokenContractIds.call,
+      instance.getOwnedCargoTokenContractIds,
       { from: this.accounts[0] },
     );
 
