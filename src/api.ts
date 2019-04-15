@@ -313,7 +313,7 @@ export default class CargoApi {
   // 🦊
   addVendor = async (crateId: string, vendorAddress: string) => {
     const {
-      cargo: { instance },
+      cargoVendor: { instance },
     } = this.contracts;
 
     const tx = await this.promisify(
@@ -330,7 +330,7 @@ export default class CargoApi {
   // 🦊
   publicAddVendor = async (crateId: string) => {
     const {
-      cargo: { instance },
+      cargoVendor: { instance },
     } = this.contracts;
 
     // @ts-ignore
@@ -401,7 +401,7 @@ export default class CargoApi {
     commission: string,
   ) => {
     const {
-      cargo: { instance },
+      cargoVendor: { instance },
     } = this.contracts;
 
     const tx = await this.promisify(
@@ -422,7 +422,7 @@ export default class CargoApi {
     commission: string,
   ) => {
     const {
-      cargo: { instance },
+      cargoVendor: { instance },
     } = this.contracts;
 
     // @ts-ignore
@@ -441,7 +441,7 @@ export default class CargoApi {
   // 🦊
   getOwnedBeneficiaries = async () => {
     const {
-      cargo: { instance },
+      cargoVendor: { instance },
     } = this.contracts;
 
     // @ts-ignore
@@ -457,7 +457,7 @@ export default class CargoApi {
   // 🦊
   getOwnedVendors = async () => {
     const {
-      cargo: { instance },
+      cargoVendor: { instance },
     } = this.contracts;
 
     // @ts-ignore

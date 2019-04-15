@@ -28,6 +28,7 @@ export type TContractNames =
   | 'cargoData'
   | 'cargoFunds'
   | 'cargoToken'
+  | 'cargoVendor'
   | 'cargoAsset';
 
 type TContractObject = {
