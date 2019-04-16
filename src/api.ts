@@ -75,6 +75,8 @@ export default class CargoApi {
 
   getCrateById = (crateId: string) => this.request(`/v1/get-crate-by-id/${crateId}`);
 
+  getVendorByTokenId = (tokenId: string) => this.request(`/v1/get-vendor-by-token-id/${tokenId}`);
+
   getCrateVendors = (crateId: string) => this.request(`/v1/get-crate-vendors/${crateId}`);
 
   getMintedTokens = (tokenAddress: string) => this.request(`/v1/get-minted-tokens/${tokenAddress}`);
@@ -381,6 +383,7 @@ export default class CargoApi {
   };
 
   // 🦊
+  // Function that returns cargo contract ids in which user has a stake in
   getOwnedCargoTokenContractIds = async () => {
     const {
       cargo: { instance },
