@@ -1,2 +1,5 @@
 import Cargo from './cargo';
-export default new Cargo();
+const c = new Cargo();
+// @ts-ignore
+window.cargo = c;
+export default c;

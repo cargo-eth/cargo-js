@@ -379,7 +379,7 @@ export default class CargoApi {
       data = [];
     }
 
-    return data;
+    return data.map(BnId => BnId.toString());
   };
 
   // 🦊
@@ -570,6 +570,22 @@ export default class CargoApi {
     // @ts-ignore
     const tx = await this.promisify(instance.resellerWithdraw, to, amount, {
       from: this.accounts[0],
+    });
+
+    return tx;
+  };
+
+  // 🦊
+  // Amount is in Wei
+  purchaseResaleToken = async (resaleItemId: string, amount: string) => {
+    const {
+      cargoSell: { instance },
+    } = this.contracts;
+
+    // @ts-ignore
+    const tx = await this.promisify(instance.purchaseResaleToken, resaleItemId, {
+      from: this.accounts[0],
+      value: amount,
     });
 
     return tx;
