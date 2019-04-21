@@ -203,6 +203,16 @@ export default class CargoApi {
     });
   });
 
+  getTransaction = (hash: string) => new Promise((resolve, reject) => {
+    this.web3.eth.getTransaction(hash, (err: any, data: any) => {
+      if(err) {
+        return reject(err);
+      } else {
+        resolve(data);
+      }
+    })
+  });
+
   private promisifyData: (fn: Function, ...args: Array<any>) => Promise<any> = (
     fn,
     ...args
