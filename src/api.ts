@@ -24,45 +24,28 @@ export default class CargoApi {
 
   contracts: TContracts;
 
-  web3: any;
-
   accounts: Array<string>;
 
   cargo: Cargo;
+
+  request: Cargo['request'];
 
   constructor(
     contracts: TContracts,
     requestUrl: string,
     hasMetaMask: boolean,
-    web3: any,
     cargo: Cargo,
   ) {
     this.requestUrl = requestUrl;
     this.hasMetaMask = hasMetaMask;
     this.contracts = contracts;
-    this.web3 = web3;
     this.cargo = cargo;
+    this.request = cargo.request;
   }
 
   setAccounts = (accounts: Array<string>) => {
     this.accounts = accounts;
   };
-
-  request = (path: string, options?: {}) => fetch(`${this.requestUrl}${path}`, options)
-    .then(async res => {
-      const json = await res.json();
-      if (res.ok) {
-        return {
-          err: false,
-          data: json,
-        };
-      }
-      return {
-        err: true,
-        data: json,
-      };
-    })
-    .then(j => j);
 
   // Methods that do not require metamask
   getBeneficiaryBalance = (beneficiaryId: string) => this.request(`/v1/get-beneficiary-balance/${beneficiaryId}`);
@@ -142,7 +125,7 @@ export default class CargoApi {
     const params = [msgParams, from];
     const method = 'eth_signTypedData';
 
-    this.web3.currentProvider.sendAsync(
+    this.cargo.web3.currentProvider.sendAsync(
       {
         method,
         params,
@@ -158,77 +141,75 @@ export default class CargoApi {
     );
   });
 
-  private requireMetaMask = () => {
+  private isEnabledAndHasMetaMask = async () => {
+    if (!this.cargo.enabled) {
+      await this.cargo.enable();
+    }
     if (!this.hasMetaMask) {
       throw new Error('Metamask required');
     }
   };
 
   private sendTx = (options: Object) => new Promise((resolve, reject) => {
-    this.web3.eth.sendTransaction(options, (err: Error, tx: string) => {
+    this.cargo.web3.eth.sendTransaction(options, (err: Error, tx: string) => {
       console.log(err);
       if (!err) {
-        this.web3.eth.getTransactionReceipt(tx, (err: Error, data: any) => {
-          if (data.status === '0x00') {
-            reject('reverted');
-          } else {
-            resolve(tx);
-          }
-        });
+        this.cargo.web3.eth.getTransactionReceipt(
+          tx,
+          (err: Error, data: any) => {
+            if (data.status === '0x00') {
+              reject('reverted');
+            } else {
+              resolve(tx);
+            }
+          },
+        );
       }
     });
   });
 
   // @ts-ignore
   private promisify = (fn, ...args) => new Promise((resolve, reject) => {
-    try {
-      this.requireMetaMask();
-    } catch (e) {
-      return reject(e);
-    }
-
     // @ts-ignore
     fn(...args, (err, tx) => {
-      console.log(err);
       if (!err) {
         // @ts-ignore
-        this.web3.eth.getTransactionReceipt(tx, (err, data) => {
+        this.cargo.web3.eth.getTransactionReceipt(tx, (err, data) => {
+          if (err) {
+            return reject(err);
+          }
           if (data.status === '0x00') {
-            reject('reverted');
+            return reject(new Error('reverted'));
           } else {
-            resolve(tx);
+            return resolve(tx);
           }
         });
+      } else {
+        reject(err);
       }
     });
   });
 
   getTransaction = (hash: string) => new Promise((resolve, reject) => {
-    this.web3.eth.getTransaction(hash, (err: any, data: any) => {
-      if(err) {
+    this.cargo.web3.eth.getTransaction(hash, (err: any, data: any) => {
+      if (err) {
         return reject(err);
       } else {
-        resolve(data);
+        return resolve(data);
       }
-    })
+    });
   });
 
   private promisifyData: (fn: Function, ...args: Array<any>) => Promise<any> = (
     fn,
     ...args
   ) => new Promise((resolve, reject) => {
-    try {
-      this.requireMetaMask();
-    } catch (e) {
-      return reject(e);
-    }
-
     // @ts-ignore
     fn(...args, (err, data) => {
       if (!err) {
-        resolve(data);
+        return resolve(data);
       } else {
-        reject(err);
+        return reject(err);
       }
     });
   });
@@ -237,7 +218,7 @@ export default class CargoApi {
 
   // 🦊
   mint = async (parameters: TMintParams) => {
-    this.requireMetaMask();
+    await this.isEnabledAndHasMetaMask();
     const {
       tokenAddress,
       vendorId,
@@ -282,6 +263,8 @@ export default class CargoApi {
 
   // 🦊
   cancelTokenSale = async (resaleItemId: string) => {
+    await this.isEnabledAndHasMetaMask();
+
     const {
       cargoSell: { instance },
     } = this.contracts;
@@ -302,6 +285,7 @@ export default class CargoApi {
     limitedSupply: boolean,
     maxSupply: string,
   ) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoAsset: { instance },
     } = this.contracts;
@@ -324,6 +308,7 @@ export default class CargoApi {
 
   // 🦊
   addVendor = async (crateId: string, vendorAddress: string) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -337,10 +322,13 @@ export default class CargoApi {
         from: this.accounts[0],
       },
     );
+
+    return tx;
   };
 
   // 🦊
   publicAddVendor = async (crateId: string) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -360,6 +348,7 @@ export default class CargoApi {
     price: string,
     fromVendor: boolean,
   ) => {
+    await this.isEnabledAndHasMetaMask();
     const instance = this.cargo.createCargoTokenInstance(tokenAddress);
     const tx = await this.promisify(instance.sell, tokenId, price, fromVendor, {
       from: this.accounts[0],
@@ -372,6 +361,7 @@ export default class CargoApi {
   getOwnedTokenIdsByCargoTokenContractId = async (
     cargoTokenContractId: string,
   ) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -395,6 +385,7 @@ export default class CargoApi {
   // 🦊
   // Function that returns cargo contract ids in which user has a stake in
   getOwnedCargoTokenContractIds = async () => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -413,6 +404,7 @@ export default class CargoApi {
     beneficiaryId: string,
     commission: string,
   ) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -434,6 +426,7 @@ export default class CargoApi {
     beneficiaryAddress: string,
     commission: string,
   ) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -453,6 +446,7 @@ export default class CargoApi {
 
   // 🦊
   getOwnedBeneficiaries = async () => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -468,7 +462,8 @@ export default class CargoApi {
   };
 
   // 🦊
-  getOwnedVendors = async () => {
+  getOwnedVendors: () => any = async () => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -477,6 +472,9 @@ export default class CargoApi {
     const vendorIds = await this.promisifyData(instance.getOwnedVendors, {
       from: this.accounts[0],
     });
+    if (!vendorIds) {
+      return [];
+    }
     const vendors = await Promise.all(
       vendorIds.map((id: string) => this.getVendorById(id)),
     );
@@ -484,7 +482,8 @@ export default class CargoApi {
   };
 
   // 🦊
-  getOwnedCrates = async () => {
+  getOwnedCrates: () => any = async () => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -493,6 +492,11 @@ export default class CargoApi {
     const crateIds = await this.promisifyData(instance.getOwnedCrates, {
       from: this.accounts[0],
     });
+
+    if (!crateIds) {
+      return [];
+    }
+
     const crates = await Promise.all(
       crateIds.map((id: string) => this.getCrateById(id)),
     );
@@ -504,6 +508,7 @@ export default class CargoApi {
     publicVendorCreation: boolean,
     callbackContractAddress: string,
   ) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -521,22 +526,30 @@ export default class CargoApi {
 
   // 🦊
   createCrate = async (publicVendorCreation: boolean) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargo: { instance },
     } = this.contracts;
 
-    const tx = await this.promisify(
-      // @ts-ignore
-      instance.createCrate,
-      publicVendorCreation,
-      { from: this.accounts[0] },
-    );
+    let tx;
+
+    try {
+      tx = await this.promisify(
+        // @ts-ignore
+        instance.createCrate,
+        publicVendorCreation,
+        { from: this.accounts[0] },
+      );
+    } catch (e) {
+      throw new Error(e);
+    }
 
     return tx;
   };
 
   // 🦊
   updateCrateApplicationFee = async (fee: string, crateId: string) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -555,6 +568,7 @@ export default class CargoApi {
 
   // 🦊
   withdraw = async (amount: string, beneficiaryId: string, to: string) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoFunds: { instance },
     } = this.contracts;
@@ -573,6 +587,7 @@ export default class CargoApi {
 
   // 🦊
   resellerWithdraw = async (to: string, amount: string) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoFunds: { instance },
     } = this.contracts;
@@ -588,15 +603,20 @@ export default class CargoApi {
   // 🦊
   // Amount is in Wei
   purchaseResaleToken = async (resaleItemId: string, amount: string) => {
+    await this.isEnabledAndHasMetaMask();
     const {
       cargoSell: { instance },
     } = this.contracts;
 
     // @ts-ignore
-    const tx = await this.promisify(instance.purchaseResaleToken, resaleItemId, {
-      from: this.accounts[0],
-      value: amount,
-    });
+    const tx = await this.promisify(
+      instance.purchaseResaleToken,
+      resaleItemId,
+      {
+        from: this.accounts[0],
+        value: amount,
+      },
+    );
 
     return tx;
   };

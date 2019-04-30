@@ -10,7 +10,7 @@ import CargoApi from './api';
 
 type TNetwork = 'local' | 'development' | 'production';
 
-type TCargoOptions = {
+type CargoOptions = {
   network: TNetwork;
   provider?: Object;
 };
@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-export type TContractNames =
+export type ContractNames =
   | 'cargo'
   | 'cargoSell'
   | 'cargoData'
@@ -31,14 +31,14 @@ export type TContractNames =
   | 'cargoVendor'
   | 'cargoAsset';
 
-type TContractObject = {
-  name: TContractNames;
+type ContractObject = {
+  name: ContractNames;
   abi: Array<Object>;
   address?: string;
   instance?: Contract;
 };
 
-const DEFAULT_OPTIONS: TCargoOptions = {
+const DEFAULT_OPTIONS: CargoOptions = {
   network: 'local',
 };
 
@@ -48,10 +48,10 @@ const REQUEST_URLS: { [N in TNetwork]: string } = {
   production: '',
 };
 
-export type TContracts = { [Name in TContractNames]: TContractObject };
+export type TContracts = { [Name in ContractNames]: ContractObject };
 
 class Cargo extends Emitter {
-  options: TCargoOptions;
+  options: CargoOptions;
 
   requestUrl?: string;
 
@@ -110,7 +110,9 @@ class Cargo extends Emitter {
   };
 
   // @ts-ignore
-  public init = async (options): Promise<'success' | 'metamask-required'> => {
+  public init = async (options?: CargoOptions): Promise<void> => {
+    if (this.initialized) return;
+
     this.options = {
       ...DEFAULT_OPTIONS,
       ...options,
@@ -118,20 +120,14 @@ class Cargo extends Emitter {
     this.requestUrl = REQUEST_URLS[this.options.network];
     // @ts-ignore
     this.contracts = await getAllContracts(this.requestUrl);
-    if (this.setUpWeb3()) {
-      this.api = new CargoApi(
-        this.contracts,
-        this.requestUrl,
-        !this.metaMaskRequired,
-        this.web3,
-        this,
-      );
-      this.emit('initialized');
-      this.initialized = true;
-      return 'success';
-    } else {
-      return 'metamask-required';
-    }
+    this.api = new CargoApi(
+      this.contracts,
+      this.requestUrl,
+      !this.metaMaskRequired,
+      this,
+    );
+
+    this.initialized = true;
   };
 
   public createCargoTokenInstance = (address: string) => {
@@ -142,15 +138,30 @@ class Cargo extends Emitter {
     }
   };
 
+  request = (path: string, options?: {}) => fetch(`${this.requestUrl}${path}`, options)
+    .then(async res => {
+      const json = await res.json();
+      if (res.ok) {
+        return {
+          err: false,
+          data: json,
+        };
+      }
+      return {
+        err: true,
+        data: json,
+      };
+    })
+    .then(j => j);
+
   enabled: boolean = false;
 
   public enable = async () => {
     if (!this.initialized) {
-      this.emit('enable-error', 'Call cargo.init() first.');
-      throw new Error('Call init() first');
+      throw new Error('Call cargo.init before calling enable.');
     }
-
-    if (this.web3) {
+    if (this.enabled) return;
+    if (this.setUpWeb3()) {
       this.accounts = await window.ethereum.enable();
       this.api.setAccounts(this.accounts);
       this.emit('enabled');
