@@ -71,9 +71,12 @@ class Cargo extends Emitter {
 
   BigNumber: BigNumber;
 
+  Web3?: Web3;
+
   constructor() {
     super();
     this.BigNumber = BigNumber;
+    this.Web3 = Web3;
   }
 
   private denominator = new BigNumber(1 * 10 ** 18);
@@ -166,6 +169,9 @@ class Cargo extends Emitter {
       this.api.setAccounts(this.accounts);
       this.emit('enabled');
       this.enabled = true;
+      return true;
+    } else {
+      return false;
     }
   };
 }
