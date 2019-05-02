@@ -62,6 +62,10 @@ export default class CargoApi {
 
   getCrateVendors = (crateId: string) => this.request(`/v1/get-crate-vendors/${crateId}`);
 
+  getOwnedResaleItemsByCrateId = (crateId: string, address: string) => this.request(
+    `/v1/get-owned-resale-items-by-crate-id/${crateId}/${address}`,
+  );
+
   getMintedTokens = (tokenAddress: string) => this.request(`/v1/get-minted-tokens/${tokenAddress}`);
 
   getResellerBalance = (resellerAddress: string) => this.request(`/v1/get-reseller-balance/${resellerAddress}`);
