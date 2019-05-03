@@ -282,6 +282,23 @@ export default class CargoApi {
   };
 
   // 🦊
+  download = async (contractAddress: string, tokenId: string) => {
+    await this.isEnabledAndHasMetaMask();
+    const signature = await this.getSignature();
+    return this.request('/v1/download', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        signature,
+        contractAddress,
+        tokenId,
+      }),
+    });
+  };
+
+  // 🦊
   createTokenContract = async (
     vendorId: string,
     tokenContractName: string,
