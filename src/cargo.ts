@@ -67,8 +67,6 @@ class Cargo extends Emitter {
 
   api?: CargoApi;
 
-  provider: Provider;
-
   BigNumber: BigNumber;
 
   Web3?: Web3;
@@ -83,9 +81,10 @@ class Cargo extends Emitter {
 
   public getCommission = (percent: number) => this.denominator.times(new BigNumber(percent)).toString();
 
+  provider: Provider =
+    window['ethereum'] || (window.web3 && window.web3.currentProvider);
+
   private setUpWeb3 = () => {
-    this.provider =
-      window['ethereum'] || (window.web3 && window.web3.currentProvider);
     if (this.provider) {
       const web3 = new Web3(this.provider);
       this.web3 = web3;
@@ -130,6 +129,10 @@ class Cargo extends Emitter {
       this,
     );
 
+    if (this.provider) {
+      this.emit('has-metamask-but-not-enabled');
+    }
+
     this.initialized = true;
   };
 
@@ -165,11 +168,16 @@ class Cargo extends Emitter {
     }
     if (this.enabled) return;
     if (this.setUpWeb3()) {
-      this.accounts = await window.ethereum.enable();
-      this.api.setAccounts(this.accounts);
-      this.emit('enabled');
-      this.enabled = true;
-      return true;
+      try {
+        this.accounts = await window.ethereum.enable();
+        this.api.setAccounts(this.accounts);
+        this.emit('enabled');
+        this.enabled = true;
+        return true;
+      } catch (e) {
+        this.emit('has-metamask-but-not-enabled');
+        return false;
+      }
     } else {
       return false;
     }

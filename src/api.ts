@@ -66,6 +66,8 @@ export default class CargoApi {
     `/v1/get-owned-resale-items-by-crate-id/${crateId}/${address}`,
   );
 
+  getTokenMetadata = (tokenAddress: string, tokenId: string) => this.request(`/v1/get-token-metadata/${tokenAddress}/${tokenId}`);
+
   getMintedTokens = (tokenAddress: string) => this.request(`/v1/get-minted-tokens/${tokenAddress}`);
 
   getResellerBalance = (resellerAddress: string) => this.request(`/v1/get-reseller-balance/${resellerAddress}`);
@@ -114,13 +116,14 @@ export default class CargoApi {
     });
   };
 
-  private getSignature = (): Promise<string> => new Promise((resolve, reject) => {
+  getSignature = (): Promise<string> => new Promise((resolve, reject) => {
     const msgParams = [
       {
         type: 'string',
-        name:
-            'I certify that I am the rightful owner of the following address',
-        value: this.accounts[0],
+        name: 'Terms',
+        value: `You agree that you are rightful owner of the current connected address.\n\n ${
+          this.accounts[0]
+        } \n\n Cargo will use this address  to show you your profile and sign transactions. No transactions will be submitted without your approval.`,
       },
     ];
 
