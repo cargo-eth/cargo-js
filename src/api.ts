@@ -123,7 +123,7 @@ export default class CargoApi {
         name: 'Terms',
         value: `You agree that you are rightful owner of the current connected address.\n\n ${
           this.accounts[0]
-        } \n\n Cargo will use this address  to show you your profile and sign transactions. No transactions will be submitted without your approval.`,
+        } \n\n Cargo will use this signature to verify your identity on our server.`,
       },
     ];
 

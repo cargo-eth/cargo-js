@@ -173,6 +173,12 @@ class Cargo extends Emitter {
         this.api.setAccounts(this.accounts);
         this.emit('enabled');
         this.enabled = true;
+        // @ts-ignore
+        window.ethereum.on('accountsChanged', accounts => {
+          this.accounts = accounts;
+          this.api.setAccounts(accounts);
+          this.emit('accounts-changed', accounts);
+        });
         return true;
       } catch (e) {
         this.emit('has-metamask-but-not-enabled');
