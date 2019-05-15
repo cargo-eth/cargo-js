@@ -1,7 +1,7 @@
 {
   "name": "@cargo-eth/js",
   "version": "1.0.0",
-  "main": "dist/bundle.js",
+  "main": "dist/main.js",
   "dependencies": {
     "bignumber.js": "^8.1.1",
     "core-js": "2",

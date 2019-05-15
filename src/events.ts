@@ -1,18 +1,19 @@
+type EventCallback = (data: any, eventName: string) => any;
+
 export default class Emitter {
   private listeners: {
-    [property: string]: Set<(data: any, eventName: any) => any>;
+    [property: string]: Set<EventCallback>;
   };
 
   constructor() {
     this.listeners = {};
   }
 
-  public on(evt: string, fn: () => any) {
+  public on(evt: string, fn: EventCallback) {
     const event = this.listeners[evt];
     if (!event) {
       this.listeners[evt] = new Set([fn]);
     } else if (event.has(fn)) {
-
     } else {
       event.add(fn);
     }

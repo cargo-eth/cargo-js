@@ -48,14 +48,14 @@ const REQUEST_URLS: { [N in TNetwork]: string } = {
   production: '',
 };
 
-export type TContracts = { [Name in ContractNames]: ContractObject };
+export type Contracts = { [Name in ContractNames]: ContractObject };
 
 class Cargo extends Emitter {
   options: CargoOptions;
 
   requestUrl?: string;
 
-  contracts: TContracts;
+  contracts: Contracts;
 
   accounts?: Array<string>;
 

@@ -1,7 +1,7 @@
 module.exports = {
   entry: './src/main.ts',
   output: {
-    filename: 'bundle.js',
+    filename: 'main.js',
     path: `${__dirname}/dist`,
     umdNamedDefine: true,
     library: 'cargo',

@@ -2,13 +2,13 @@
   "compilerOptions": {
     "removeComments": true,
     "preserveConstEnums": true,
+    "declaration": true,
     "sourceMap": true,
     "outDir": "./dist/",
     "noImplicitAny": true,
     "module": "esnext",
     "target": "es5",
-    "lib": [ "es2015", "dom" ],
-    "allowJs": true
+    "lib": ["es2015", "dom"]
   },
   "awesomeTypescriptLoaderOptions": {
     "reportFiles": false

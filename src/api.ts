@@ -1,5 +1,5 @@
 import * as fetch from 'isomorphic-fetch';
-import Cargo, { TContracts, TContractNames } from './cargo';
+import Cargo, { Contracts, ContractNames } from './cargo';
 
 type TMintParams = {
   hasFiles: boolean;
@@ -13,16 +13,12 @@ type TMintParams = {
   to?: string;
 };
 
-interface TCargoApiInterface {
-  promisifyData(fn: Function, ...args: Array<any>): Promise<any>;
-}
-
 export default class CargoApi {
   requestUrl: string;
 
   hasMetaMask: boolean;
 
-  contracts: TContracts;
+  contracts: Contracts;
 
   accounts: Array<string>;
 
@@ -31,7 +27,7 @@ export default class CargoApi {
   request: Cargo['request'];
 
   constructor(
-    contracts: TContracts,
+    contracts: Contracts,
     requestUrl: string,
     hasMetaMask: boolean,
     cargo: Cargo,
@@ -54,7 +50,7 @@ export default class CargoApi {
 
   getBeneficiaryVendor = (beneficiaryId: string) => this.request(`/v1/get-beneficiary-vendor/${beneficiaryId}`);
 
-  getContract = (contract: TContractNames) => this.request(`/v1/get-contract/${contract}`);
+  getContract = (contract: ContractNames) => this.request(`/v1/get-contract/${contract}`);
 
   getCrateById = (crateId: string) => this.request(`/v1/get-crate-by-id/${crateId}`);
 
@@ -632,8 +628,8 @@ export default class CargoApi {
       cargoSell: { instance },
     } = this.contracts;
 
-    // @ts-ignore
     const tx = await this.promisify(
+      // @ts-ignore
       instance.purchaseResaleToken,
       resaleItemId,
       {
