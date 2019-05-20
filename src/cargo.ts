@@ -63,7 +63,7 @@ class Cargo extends Emitter {
 
   web3?: Web3;
 
-  metaMaskRequired?: true;
+  metaMaskRequired?: boolean;
 
   api?: CargoApi;
 
@@ -71,18 +71,20 @@ class Cargo extends Emitter {
 
   Web3?: Web3;
 
+  provider: Provider;
+
   constructor() {
     super();
     this.BigNumber = BigNumber;
     this.Web3 = Web3;
+    this.provider =
+      window['ethereum'] || (window.web3 && window.web3.currentProvider);
+    this.metaMaskRequired = !this.provider;
   }
 
   private denominator = new BigNumber(1 * 10 ** 18);
 
   public getCommission = (percent: number) => this.denominator.times(new BigNumber(percent)).toString();
-
-  provider: Provider =
-    window['ethereum'] || (window.web3 && window.web3.currentProvider);
 
   private setUpWeb3 = () => {
     if (this.provider) {
@@ -144,19 +146,25 @@ class Cargo extends Emitter {
     }
   };
 
-  request = (path: string, options?: {}) => fetch(`${this.requestUrl}${path}`, options)
+  request = (path: string, options?: {}, isJson: boolean = true) => fetch(`${this.requestUrl}${path}`, options)
     .then(async res => {
-      const json = await res.json();
-      if (res.ok) {
+      if (isJson) {
+        const json = await res.json();
+        if (res.ok) {
+          return {
+            err: false,
+            data: json,
+          };
+        }
         return {
-          err: false,
+          err: true,
           data: json,
         };
+      } else if (res.ok) {
+        return {
+          err: false,
+        };
       }
-      return {
-        err: true,
-        data: json,
-      };
     })
     .then(j => j);
 
@@ -166,10 +174,13 @@ class Cargo extends Emitter {
     if (!this.initialized) {
       throw new Error('Call cargo.init before calling enable.');
     }
-    if (this.enabled) return;
+    if (this.enabled) return true;
     if (this.setUpWeb3()) {
       try {
         this.accounts = await window.ethereum.enable();
+        if(!this.accounts) {
+          throw new Error('Accounts is undefined. User cancelled');
+        }
         this.api.setAccounts(this.accounts);
         this.emit('enabled');
         this.enabled = true;
