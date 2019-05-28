@@ -113,26 +113,19 @@ export default class CargoApi {
   };
 
   getSignature = (): Promise<string> => new Promise((resolve, reject) => {
-    const msgParams = [
-      {
-        type: 'string',
-        name: 'Terms',
-        value: `You agree that you are rightful owner of the current connected address.\n\n ${
-          this.accounts[0]
-        } \n\n Cargo will use this signature to verify your identity on our server.`,
-      },
-    ];
-
-    const from = this.accounts[0];
-
-    const params = [msgParams, from];
-    const method = 'eth_signTypedData';
-
     this.cargo.web3.currentProvider.sendAsync(
       {
-        method,
-        params,
-        from,
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'personal_sign',
+        params: [
+          this.cargo.web3.toHex(
+            `You agree that you are rightful owner of the current connected address.\n\n ${
+              this.accounts[0]
+            } \n\n Cargo will use this signature to verify your identity on our server.`,
+          ), // message
+          this.accounts[0],
+        ],
       },
       (err: Error, result: any) => {
         if (err) return reject(new Error(err.message));
@@ -142,6 +135,35 @@ export default class CargoApi {
         resolve(result.result);
       },
     );
+    // const msgParams = [
+    //   {
+    //     type: 'string',
+    //     name: 'Terms',
+    //     value: `You agree that you are rightful owner of the current connected address.\n\n ${
+    //       this.accounts[0]
+    //     } \n\n Cargo will use this signature to verify your identity on our server.`,
+    //   },
+    // ];
+
+    // const from = this.accounts[0];
+
+    // const params = [msgParams, from];
+    // const method = 'eth_signTypedData';
+
+    // this.cargo.web3.currentProvider.sendAsync(
+    //   {
+    //     method,
+    //     params,
+    //     from,
+    //   },
+    //   (err: Error, result: any) => {
+    //     if (err) return reject(new Error(err.message));
+    //     if (result.error) {
+    //       return reject(new Error(result.error.message));
+    //     }
+    //     resolve(result.result);
+    //   },
+    // );
   });
 
   private isEnabledAndHasMetaMask = async () => {
@@ -160,7 +182,7 @@ export default class CargoApi {
         this.cargo.web3.eth.getTransactionReceipt(
           tx,
           (err: Error, data: any) => {
-            if (data.status === '0x00') {
+            if (data && data.status === '0x00') {
               reject('reverted');
             } else {
               resolve(tx);
@@ -176,17 +198,24 @@ export default class CargoApi {
     // @ts-ignore
     fn(...args, (err, tx) => {
       if (!err) {
-        // @ts-ignore
-        this.cargo.web3.eth.getTransactionReceipt(tx, (err, data) => {
-          if (err) {
-            return reject(err);
-          }
-          if (data.status === '0x00') {
-            return reject(new Error('reverted'));
-          } else {
-            return resolve(tx);
-          }
-        });
+        resolve(tx);
+        // Coinbase wallet doesnt seem to work well with getTransactionReceipt
+        // Get the error Unable to get address if we call it immediately after
+        // submitting the transaction, however it does work in metamask.
+        // Fixed in coinbase wallet with a set timeout of 10 seconds, but thats
+        // not reasonable. Commenting out for now and will revist if needed.
+
+        //   // @ts-ignore
+        //   this.cargo.web3.eth.getTransactionReceipt(tx, (err, data) => {
+        //     if (err) {
+        //       return reject(err);
+        //     }
+        //     if (data && data.status === '0x00') {
+        //       return reject(new Error('reverted'));
+        //     } else {
+        //       return resolve(tx);
+        //     }
+        //   });
       } else {
         reject(err);
       }

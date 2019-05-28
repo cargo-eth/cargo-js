@@ -39,12 +39,12 @@ type ContractObject = {
 };
 
 const DEFAULT_OPTIONS: CargoOptions = {
-  network: 'local',
+  network: 'development',
 };
 
 const REQUEST_URLS: { [N in TNetwork]: string } = {
   local: 'http://localhost:3333',
-  development: '',
+  development: 'https://dev-api.cargo.engineering',
   production: '',
 };
 
@@ -133,6 +133,8 @@ class Cargo extends Emitter {
 
     if (this.provider) {
       this.emit('has-metamask-but-not-enabled');
+    } else {
+      this.emit('metamask-required');
     }
 
     this.initialized = true;
@@ -177,19 +179,27 @@ class Cargo extends Emitter {
     if (this.enabled) return true;
     if (this.setUpWeb3()) {
       try {
-        this.accounts = await window.ethereum.enable();
-        if(!this.accounts) {
+        if (window.ethereum && window.ethereum.enable) {
+          this.accounts = await window.ethereum.enable();
+        } else {
+          this.accounts = window.web3.eth.accounts;
+        }
+        if (!this.accounts) {
           throw new Error('Accounts is undefined. User cancelled');
         }
         this.api.setAccounts(this.accounts);
         this.emit('enabled');
         this.enabled = true;
-        // @ts-ignore
-        window.ethereum.on('accountsChanged', accounts => {
-          this.accounts = accounts;
-          this.api.setAccounts(accounts);
-          this.emit('accounts-changed', accounts);
-        });
+
+        if (window.web3.currentProvider.isMetaMask) {
+          // @ts-ignore
+          window.ethereum.on('accountsChanged', accounts => {
+            this.accounts = accounts;
+            this.api.setAccounts(accounts);
+            this.emit('accounts-changed', accounts);
+          });
+        }
+
         return true;
       } catch (e) {
         this.emit('has-metamask-but-not-enabled');

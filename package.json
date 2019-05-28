@@ -27,7 +27,7 @@
     "webpack-merge": "^4.2.1"
   },
   "scripts": {
-    "build": "REQUEST_URL='http://localhost:3333' yarn webpack --config ./webpack.prod.js",
+    "build": "NODE_ENV=production yarn webpack --config ./webpack.prod.js",
     "develop": "REQUEST_URL='http://localhost:3333' yarn webpack --watch --config ./webpack.dev.js",
     "test": "node test/test.js",
     "pretest": "npm run build"
