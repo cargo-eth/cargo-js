@@ -16,8 +16,6 @@ type TMintParams = {
 export default class CargoApi {
   requestUrl: string;
 
-  hasMetaMask: boolean;
-
   contracts: Contracts;
 
   accounts: Array<string>;
@@ -26,14 +24,8 @@ export default class CargoApi {
 
   request: Cargo['request'];
 
-  constructor(
-    contracts: Contracts,
-    requestUrl: string,
-    hasMetaMask: boolean,
-    cargo: Cargo,
-  ) {
+  constructor(contracts: Contracts, requestUrl: string, cargo: Cargo) {
     this.requestUrl = requestUrl;
-    this.hasMetaMask = hasMetaMask;
     this.contracts = contracts;
     this.cargo = cargo;
     this.request = cargo.request;
@@ -119,11 +111,9 @@ export default class CargoApi {
         id: 1,
         method: 'personal_sign',
         params: [
-          this.cargo.web3.toHex(
-            `You agree that you are rightful owner of the current connected address.\n\n ${
-              this.accounts[0]
-            } \n\n Cargo will use this signature to verify your identity on our server.`,
-          ), // message
+          `You agree that you are rightful owner of the current connected address.\n\n ${
+            this.accounts[0]
+          } \n\n Cargo will use this signature to verify your identity on our server.`,
           this.accounts[0],
         ],
       },
@@ -135,43 +125,14 @@ export default class CargoApi {
         resolve(result.result);
       },
     );
-    // const msgParams = [
-    //   {
-    //     type: 'string',
-    //     name: 'Terms',
-    //     value: `You agree that you are rightful owner of the current connected address.\n\n ${
-    //       this.accounts[0]
-    //     } \n\n Cargo will use this signature to verify your identity on our server.`,
-    //   },
-    // ];
-
-    // const from = this.accounts[0];
-
-    // const params = [msgParams, from];
-    // const method = 'eth_signTypedData';
-
-    // this.cargo.web3.currentProvider.sendAsync(
-    //   {
-    //     method,
-    //     params,
-    //     from,
-    //   },
-    //   (err: Error, result: any) => {
-    //     if (err) return reject(new Error(err.message));
-    //     if (result.error) {
-    //       return reject(new Error(result.error.message));
-    //     }
-    //     resolve(result.result);
-    //   },
-    // );
   });
 
-  private isEnabledAndHasMetaMask = async () => {
+  private isEnabledAndHasProvider = async () => {
     if (!this.cargo.enabled) {
       await this.cargo.enable();
     }
-    if (!this.hasMetaMask) {
-      throw new Error('Metamask required');
+    if (this.cargo.providerRequired) {
+      throw new Error('Provider required');
     }
   };
 
@@ -250,7 +211,7 @@ export default class CargoApi {
 
   // 🦊
   mint = async (parameters: TMintParams) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       tokenAddress,
       vendorId,
@@ -295,7 +256,7 @@ export default class CargoApi {
 
   // 🦊
   cancelTokenSale = async (resaleItemId: string) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
 
     const {
       cargoSell: { instance },
@@ -311,7 +272,7 @@ export default class CargoApi {
 
   // 🦊
   download = async (contractAddress: string, tokenId: string) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const signature = await this.getSignature();
     return this.request('/v1/download', {
       method: 'POST',
@@ -334,7 +295,7 @@ export default class CargoApi {
     limitedSupply: boolean,
     maxSupply: string,
   ) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoAsset: { instance },
     } = this.contracts;
@@ -357,7 +318,7 @@ export default class CargoApi {
 
   // 🦊
   addVendor = async (crateId: string, vendorAddress: string) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -377,7 +338,7 @@ export default class CargoApi {
 
   // 🦊
   publicAddVendor = async (crateId: string) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -397,7 +358,7 @@ export default class CargoApi {
     price: string,
     fromVendor: boolean,
   ) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const instance = this.cargo.createCargoTokenInstance(tokenAddress);
     const tx = await this.promisify(instance.sell, tokenId, price, fromVendor, {
       from: this.accounts[0],
@@ -410,7 +371,7 @@ export default class CargoApi {
   getOwnedTokenIdsByCargoTokenContractId = async (
     cargoTokenContractId: string,
   ) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -434,7 +395,7 @@ export default class CargoApi {
   // 🦊
   // Function that returns cargo contract ids in which user has a stake in
   getOwnedCargoTokenContractIds = async () => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -453,7 +414,7 @@ export default class CargoApi {
     beneficiaryId: string,
     commission: string,
   ) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -475,7 +436,7 @@ export default class CargoApi {
     beneficiaryAddress: string,
     commission: string,
   ) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -495,7 +456,7 @@ export default class CargoApi {
 
   // 🦊
   getOwnedBeneficiaries = async () => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -512,7 +473,7 @@ export default class CargoApi {
 
   // 🦊
   getOwnedVendors: () => any = async () => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoVendor: { instance },
     } = this.contracts;
@@ -532,7 +493,7 @@ export default class CargoApi {
 
   // 🦊
   getOwnedCrates: () => any = async () => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -557,7 +518,7 @@ export default class CargoApi {
     publicVendorCreation: boolean,
     callbackContractAddress: string,
   ) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -575,7 +536,7 @@ export default class CargoApi {
 
   // 🦊
   createCrate = async (publicVendorCreation: boolean) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -598,7 +559,7 @@ export default class CargoApi {
 
   // 🦊
   updateCrateApplicationFee = async (fee: string, crateId: string) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargo: { instance },
     } = this.contracts;
@@ -617,7 +578,7 @@ export default class CargoApi {
 
   // 🦊
   withdraw = async (amount: string, beneficiaryId: string, to: string) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoFunds: { instance },
     } = this.contracts;
@@ -636,7 +597,7 @@ export default class CargoApi {
 
   // 🦊
   resellerWithdraw = async (to: string, amount: string) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoFunds: { instance },
     } = this.contracts;
@@ -652,7 +613,7 @@ export default class CargoApi {
   // 🦊
   // Amount is in Wei
   purchaseResaleToken = async (resaleItemId: string, amount: string) => {
-    await this.isEnabledAndHasMetaMask();
+    await this.isEnabledAndHasProvider();
     const {
       cargoSell: { instance },
     } = this.contracts;

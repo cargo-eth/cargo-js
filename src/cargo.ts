@@ -63,7 +63,7 @@ class Cargo extends Emitter {
 
   web3?: Web3;
 
-  metaMaskRequired?: boolean;
+  providerRequired?: boolean;
 
   api?: CargoApi;
 
@@ -79,7 +79,7 @@ class Cargo extends Emitter {
     this.Web3 = Web3;
     this.provider =
       window['ethereum'] || (window.web3 && window.web3.currentProvider);
-    this.metaMaskRequired = !this.provider;
+    this.providerRequired = !this.provider;
   }
 
   private denominator = new BigNumber(1 * 10 ** 18);
@@ -94,8 +94,8 @@ class Cargo extends Emitter {
       this.initializeContracts();
       return true;
     } else {
-      this.emit('metamask-required');
-      this.metaMaskRequired = true;
+      this.emit('provider-required');
+      this.providerRequired = true;
       return false;
     }
   };
@@ -124,17 +124,12 @@ class Cargo extends Emitter {
     this.requestUrl = REQUEST_URLS[this.options.network];
     // @ts-ignore
     this.contracts = await getAllContracts(this.requestUrl);
-    this.api = new CargoApi(
-      this.contracts,
-      this.requestUrl,
-      !this.metaMaskRequired,
-      this,
-    );
+    this.api = new CargoApi(this.contracts, this.requestUrl, this);
 
     if (this.provider) {
-      this.emit('has-metamask-but-not-enabled');
+      this.emit('has-provider-but-not-enabled');
     } else {
-      this.emit('metamask-required');
+      this.emit('provider-required');
     }
 
     this.initialized = true;
@@ -202,7 +197,7 @@ class Cargo extends Emitter {
 
         return true;
       } catch (e) {
-        this.emit('has-metamask-but-not-enabled');
+        this.emit('has-provider-but-not-enabled');
         return false;
       }
     } else {
