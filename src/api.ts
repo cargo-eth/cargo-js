@@ -1,4 +1,3 @@
-import * as fetch from 'isomorphic-fetch';
 import Cargo, { Contracts, ContractNames } from './cargo';
 
 type TMintParams = {

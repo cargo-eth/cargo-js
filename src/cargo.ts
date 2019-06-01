@@ -45,7 +45,7 @@ const DEFAULT_OPTIONS: CargoOptions = {
 const REQUEST_URLS: { [N in TNetwork]: string } = {
   local: 'http://localhost:3333',
   development: 'https://dev-api.cargo.engineering',
-  production: '',
+  production: 'https://api.cargo.build',
 };
 
 export type Contracts = { [Name in ContractNames]: ContractObject };
