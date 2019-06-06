@@ -143,7 +143,7 @@ class Cargo extends Emitter {
     }
   };
 
-  request = (path: string, options?: {}, isJson: boolean = true) => fetch(`${this.requestUrl}${path}`, options)
+  request = (path: string, options?: {}, isJson: boolean = true) => fetch(`${this.requestUrl}${path}`, { cache: 'no-cache', ...options })
     .then(async res => {
       if (isJson) {
         const json = await res.json();
