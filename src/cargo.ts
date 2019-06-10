@@ -7,6 +7,7 @@ import BigNumber from 'bignumber.js';
 import getAllContracts from './getAllContracts';
 import Emitter from './events';
 import CargoApi from './api';
+import PollTx from './pollTx';
 
 type TNetwork = 'local' | 'development' | 'production';
 
@@ -68,6 +69,8 @@ class Cargo extends Emitter {
   api?: CargoApi;
 
   BigNumber: BigNumber;
+
+  pollTx?: PollTx;
 
   Web3?: Web3;
 
@@ -182,6 +185,7 @@ class Cargo extends Emitter {
         if (!this.accounts) {
           throw new Error('Accounts is undefined. User cancelled');
         }
+        this.pollTx = new PollTx(this);
         this.api.setAccounts(this.accounts);
         this.emit('enabled');
         this.enabled = true;
