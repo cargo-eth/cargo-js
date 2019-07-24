@@ -39,8 +39,6 @@ const getBlock = (web3: Web3, ...args: any[]): Promise<number> => new Promise(re
 });
 
 export default class PollTx extends Emitter {
-  web3: Web3;
-
   pending: string[];
 
   completed: string[];
@@ -67,46 +65,52 @@ export default class PollTx extends Emitter {
     this.emit('pendingUpdated', this.pending);
   }
 
+  private internalWatch = async () => {
+    console.log(this);
+    if (!this.watching) {
+      return;
+    }
+    const txData = await Promise.all(
+      this.pending.map(tx => this.cargo.api.getTransaction(tx)),
+    );
+    console.log(txData);
+
+    const completed = txData.filter(
+      (tx: { blockNumber: number }) => !!tx && tx.blockNumber != null,
+    );
+
+    console.log(completed);
+
+    if (completed.length > 0) {
+      await Promise.all(
+        completed.map((tx: { blockNumber: number; hash: string }) => (async () => {
+          const { blockNumber } = tx;
+          let block;
+
+          try {
+            console.log('TRY TO GET BLOCKS');
+            block = await getBlock(this.cargo.web3, 'latest');
+            console.log('BLOCK', block);
+          } catch (e) {
+            console.error(e.message);
+          }
+
+          if (block && block - blockNumber >= 0) {
+            this.completedFn(tx);
+          }
+        })(),
+        ),
+      );
+    }
+
+    window.setTimeout(this.internalWatch, 1000);
+  };
+
   // Internal function that begins to watch transactions in pending array
   private startWatching() {
     if (this.watching) return;
     this.watching = true;
-    const watch = async () => {
-      if (!this.watching) {
-        return;
-      }
-      const txData = await Promise.all(
-        this.pending.map(tx => this.cargo.api.getTransaction(tx)),
-      );
-
-      const completed = txData.filter(
-        (tx: { blockNumber: number }) => !!tx && tx.blockNumber != null,
-      );
-
-      if (completed.length > 0) {
-        await Promise.all(
-          completed.map((tx: { blockNumber: number; hash: string }) => (async () => {
-            const { blockNumber } = tx;
-            let block;
-
-            try {
-              block = await getBlock(this.cargo.web3, 'latest');
-            } catch (e) {
-              console.error(e.message);
-            }
-
-            if (block && block - blockNumber >= 0) {
-              this.completedFn(tx);
-            }
-          })(),
-          ),
-        );
-      }
-
-      window.setTimeout(watch, 1000);
-    };
-
-    watch();
+    this.internalWatch();
   }
 
   // Internal function that is called when a transaction has been completed
