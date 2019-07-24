@@ -16,6 +16,8 @@ type CargoOptions = {
   provider?: Object;
 };
 
+const validOptionKeys: (keyof CargoOptions)[] = ['network', 'provider'];
+
 declare global {
   interface Window {
     ethereum?: Provider & { enable: () => Array<string> };
@@ -76,13 +78,37 @@ class Cargo extends Emitter {
 
   provider: Provider;
 
-  constructor() {
+  constructor(options?: CargoOptions) {
     super();
     this.BigNumber = BigNumber;
     this.Web3 = Web3;
     this.provider =
       window['ethereum'] || (window.web3 && window.web3.currentProvider);
     this.providerRequired = !this.provider;
+
+    if (options) {
+      if (!(typeof options === 'object' && !Array.isArray(options))) {
+        throw new Error('Options are invalid.');
+      }
+
+      Object.keys(options).forEach((key: keyof CargoOptions) => {
+        if (!validOptionKeys.includes(key)) {
+          throw new Error(`${key} is not a valid Cargo option.`);
+        }
+      });
+    }
+
+    this.options = {
+      ...DEFAULT_OPTIONS,
+      ...options,
+    };
+
+    this.requestUrl = REQUEST_URLS[this.options.network];
+
+    // Verfiy that the network option is valid
+    if (!this.requestUrl) {
+      throw new Error(`${this.options.network} is not a valid network.`);
+    }
   }
 
   private denominator = new BigNumber(1 * 10 ** 18);
@@ -117,14 +143,9 @@ class Cargo extends Emitter {
   };
 
   // @ts-ignore
-  public init = async (options?: CargoOptions): Promise<void> => {
+  public init = async (): Promise<void> => {
     if (this.initialized) return;
 
-    this.options = {
-      ...DEFAULT_OPTIONS,
-      ...options,
-    };
-    this.requestUrl = REQUEST_URLS[this.options.network];
     // @ts-ignore
     this.contracts = await getAllContracts(this.requestUrl);
     this.api = new CargoApi(this.contracts, this.requestUrl, this);

@@ -57,15 +57,18 @@ export default class PollTx extends Emitter {
     this.watching = false;
   }
 
-  watch(tx: string) {
+  // Public function that is called when the user wants to watch a transaction
+  public watch(tx: string) {
     this.pending.push(tx);
     if (!this.watching) {
       this.startWatching();
     }
+    // An event which is emitted with the updated list of pending transactions
     this.emit('pendingUpdated', this.pending);
   }
 
-  startWatching() {
+  // Internal function that begins to watch transactions in pending array
+  private startWatching() {
     if (this.watching) return;
     this.watching = true;
     const watch = async () => {
@@ -106,10 +109,14 @@ export default class PollTx extends Emitter {
     watch();
   }
 
-  completedFn(tx: { hash: string }) {
+  // Internal function that is called when a transaction has been completed
+  private completedFn(tx: { hash: string }) {
+    // Remove completed transaction from pending array
     this.pending = this.pending.filter(t => t !== tx.hash);
     this.completed.push(tx.hash);
+    // An even which is emitted upon a completed transaction
     this.emit('completed', tx.hash);
+    // An even which is emitted that included the updated pending transactions
     this.emit('pendingUpdated', this.pending);
     if (this.pending.length === 0) {
       this.watching = false;
