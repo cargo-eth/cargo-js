@@ -4,7 +4,7 @@ module.exports = {
     filename: 'main.js',
     path: `${__dirname}/dist`,
     umdNamedDefine: true,
-    library: 'cargo',
+    library: 'Cargo',
     libraryExport: 'default',
     libraryTarget: 'umd',
   },

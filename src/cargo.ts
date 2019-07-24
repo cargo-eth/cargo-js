@@ -9,7 +9,7 @@ import Emitter from './events';
 import CargoApi from './api';
 import PollTx from './pollTx';
 
-type TNetwork = 'local' | 'development' | 'production';
+export type TNetwork = 'local' | 'development' | 'production';
 
 type CargoOptions = {
   network: TNetwork;
@@ -70,7 +70,7 @@ class Cargo extends Emitter {
 
   api?: CargoApi;
 
-  BigNumber: BigNumber;
+  BigNumber: typeof BigNumber;
 
   pollTx?: PollTx;
 
