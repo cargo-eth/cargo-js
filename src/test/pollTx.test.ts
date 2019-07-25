@@ -3,6 +3,7 @@ import Cargo from '../cargo';
 jest.mock('../cargo', () => jest.fn().mockImplementation(() => {
   const getTransaction = jest.fn(() => ({
     blockNumber: 1,
+    hash: '1234',
   }));
   const Api = jest.fn().mockImplementation(() => ({
     getTransaction,
@@ -21,6 +22,7 @@ jest.mock('../cargo', () => jest.fn().mockImplementation(() => {
 
 describe('PollTx Class', () => {
   beforeEach(() => {
+    // @ts-ignore
     Cargo.mockClear();
   });
 
@@ -31,7 +33,7 @@ describe('PollTx Class', () => {
     const pollTx = new PollTx(cargo);
   });
 
-  test('should watch tx', async () => {
+  test('should watch tx and emit completed when done', async () => {
     const { default: PollTx } = require('../pollTx');
     const cargo = new Cargo();
     const pollTx = new PollTx(cargo);
@@ -39,9 +41,24 @@ describe('PollTx Class', () => {
     pollTx.pending = ['1234'];
     pollTx.watching = true;
     pollTx.on('completed', (tx: string) => {
-      console.log('DONE');
+      expect(tx).toBe('1234');
+    });
+    pollTx.on('pendingUpdated', (pending: string[]) => {
+      expect(pending).toEqual([]);
     });
     await pollTx.internalWatch();
-    // console.log(data);
+  });
+  test('should remove completed transactions from pending array', async () => {
+    const { default: PollTx } = require('../pollTx');
+    const cargo = new Cargo();
+    const pollTx = new PollTx(cargo);
+
+    pollTx.pending = ['1234'];
+    pollTx.watching = true;
+    pollTx.on('pendingUpdated', (pending: string[]) => {
+      expect(pending).toEqual([]);
+      expect(pollTx.pending).toEqual([]);
+    });
+    await pollTx.internalWatch();
   });
 });

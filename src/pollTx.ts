@@ -66,20 +66,16 @@ export default class PollTx extends Emitter {
   }
 
   private internalWatch = async () => {
-    console.log(this);
     if (!this.watching) {
       return;
     }
     const txData = await Promise.all(
       this.pending.map(tx => this.cargo.api.getTransaction(tx)),
     );
-    console.log(txData);
 
     const completed = txData.filter(
       (tx: { blockNumber: number }) => !!tx && tx.blockNumber != null,
     );
-
-    console.log(completed);
 
     if (completed.length > 0) {
       await Promise.all(
@@ -88,9 +84,7 @@ export default class PollTx extends Emitter {
           let block;
 
           try {
-            console.log('TRY TO GET BLOCKS');
             block = await getBlock(this.cargo.web3, 'latest');
-            console.log('BLOCK', block);
           } catch (e) {
             console.error(e.message);
           }
