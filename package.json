@@ -53,7 +53,7 @@
     "develop": "REQUEST_URL='http://localhost:3333' yarn webpack --watch --config ./webpack.dev.js",
     "test": "jest",
     "pretest": "npm run build",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run test && yarn run build"
   },
   "files": [
     "dist"
