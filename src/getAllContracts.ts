@@ -1,5 +1,3 @@
-import * as fetch from 'isomorphic-fetch';
-
 export default async (requestUrl: string) => {
   const url = (name: string) => `${requestUrl}/v1/get-contract/${name}`;
   const contracts = await Promise.all(

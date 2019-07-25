@@ -1,10 +1,15 @@
 {
   "name": "@cargo-eth/js",
-  "version": "1.0.3",
-  "main": "dist/main.js",
+  "version": "2.0.0",
+  "main": "./dist/main.js",
+  "typings": "./dist/main.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/cargo-eth/cargo-js.git"
+  },
+  "resolutions": {
+    "lodash": "4.17.13",
+    "js-yaml": "3.13.1"
   },
   "dependencies": {
     "bignumber.js": "^8.1.1",
@@ -12,17 +17,30 @@
     "isomorphic-fetch": "^2.2.1",
     "web3": "^0.20.7"
   },
+  "jest": {
+    "automock": false,
+    "setupFiles": [
+      "<rootDir>/src/test/setup.jest.ts"
+    ]
+  },
   "devDependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
+    "@babel/preset-typescript": "^7.3.3",
     "@types/isomorphic-fetch": "^0.0.35",
+    "@types/jest": "^24.0.15",
     "@types/web3": "^1.0.18",
     "awesome-typescript-loader": "^5.2.1",
     "babel-eslint": "^10.0.1",
+    "babel-jest": "^24.8.0",
     "eslint": "^5.15.1",
     "eslint-config-airbnb": "^17.1.0",
     "eslint-plugin-flowtype": "^3.4.2",
     "eslint-plugin-import": "^2.16.0",
     "eslint-plugin-jsx-a11y": "^6.2.1",
     "eslint-plugin-react": "^7.12.4",
+    "jest": "^24.8.0",
+    "jest-fetch-mock": "^2.1.2",
     "prettier": "1.16.4",
     "source-map-loader": "^0.2.4",
     "typescript": "^3.3.3333",
@@ -33,9 +51,9 @@
   "scripts": {
     "build": "rm -r ./dist; NODE_ENV=production yarn webpack --config ./webpack.prod.js",
     "develop": "REQUEST_URL='http://localhost:3333' yarn webpack --watch --config ./webpack.dev.js",
-    "test": "node test/test.js",
+    "test": "jest",
     "pretest": "npm run build",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run test && yarn run build"
   },
   "files": [
     "dist"

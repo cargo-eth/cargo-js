@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "removeComments": true,
+    "moduleResolution": "node",
     "preserveConstEnums": true,
     "declaration": true,
     "sourceMap": true,
@@ -11,6 +12,6 @@
     "lib": ["es2015", "dom"]
   },
   "awesomeTypescriptLoaderOptions": {
-    "reportFiles": false
+    "reportFiles": ["src/**/*.{ts,tsx}"]
   }
 }
