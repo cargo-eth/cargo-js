@@ -8,6 +8,7 @@ import getAllContracts from './getAllContracts';
 import Emitter from './events';
 import CargoApi from './api';
 import PollTx from './pollTx';
+import Utils from './utils';
 
 export type TNetwork = 'local' | 'development' | 'production';
 
@@ -78,9 +79,12 @@ class Cargo extends Emitter {
 
   provider: Provider;
 
+  utils?: Utils;
+
   constructor(options?: CargoOptions) {
     super();
     this.BigNumber = BigNumber;
+    this.utils = new Utils();
     this.Web3 = Web3;
     this.provider =
       window['ethereum'] || (window.web3 && window.web3.currentProvider);

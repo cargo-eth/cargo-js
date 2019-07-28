@@ -73,6 +73,8 @@ export default class CargoApi {
 
   getOwnedResaleItems = (address: string) => this.request(`/v1/get-owned-resale-items/${address}`);
 
+  getResaleItemsByCrateId = (crateId: string) => this.request(`/v1/get-resale-items-by-crate-id/${crateId}`);
+
   getContractResaleItems = (contracts: Array<string>) => this.request(
     `/v1/get-contract-resale-items?contractIds=${JSON.stringify(contracts)}`,
   );
