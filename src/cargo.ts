@@ -153,6 +153,7 @@ class Cargo extends Emitter {
     // @ts-ignore
     this.contracts = await getAllContracts(this.requestUrl);
     this.api = new CargoApi(this.contracts, this.requestUrl, this);
+    this.pollTx = new PollTx(this);
 
     if (this.provider) {
       this.emit('has-provider-but-not-enabled');
@@ -210,7 +211,6 @@ class Cargo extends Emitter {
         if (!this.accounts) {
           throw new Error('Accounts is undefined. User cancelled');
         }
-        this.pollTx = new PollTx(this);
         this.api.setAccounts(this.accounts);
         this.emit('enabled');
         this.enabled = true;

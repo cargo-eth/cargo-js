@@ -613,7 +613,10 @@ export default class CargoApi {
 
   // 🦊
   // Amount is in Wei
-  purchaseResaleToken = async (resaleItemId: string, amount: string) => {
+  purchaseResaleToken = async (
+    resaleItemId: string,
+    amount: string,
+  ): Promise<string> => {
     await this.isEnabledAndHasProvider();
     const {
       cargoSell: { instance },
@@ -629,6 +632,6 @@ export default class CargoApi {
       },
     );
 
-    return tx;
+    return tx as string;
   };
 }
