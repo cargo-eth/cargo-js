@@ -154,6 +154,7 @@ class Cargo extends Emitter {
     const contracts = await getAllContracts(this.requestUrl);
     // @ts-ignore
     this.contracts = contracts;
+    // @ts-ignore
     this.api = new CargoApi(contracts, this.requestUrl, this);
     this.pollTx = new PollTx(this);
 
