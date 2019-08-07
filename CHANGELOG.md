@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2017-08-06
+
+### Added
+
+- Added getResaleItemsByCrateId to get all resale items in a crate for the given crate ID.
+- Initialize PollTx in the init function
+- Update cargo.request to take a rawUrl option
+- Added groupResaleItems util function
+
+### Fixed
+
+- Fixed bug where wallets like Opera on android do not return accounts array after calling enable()
+
 ## [2.0.0] - 2017-06-24
 
 ### Added
