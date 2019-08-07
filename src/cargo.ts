@@ -8,6 +8,7 @@ import getAllContracts from './getAllContracts';
 import Emitter from './events';
 import CargoApi from './api';
 import PollTx from './pollTx';
+import Utils from './utils';
 
 export type TNetwork = 'local' | 'development' | 'production';
 
@@ -78,9 +79,12 @@ class Cargo extends Emitter {
 
   provider: Provider;
 
+  utils?: Utils;
+
   constructor(options?: CargoOptions) {
     super();
     this.BigNumber = BigNumber;
+    this.utils = new Utils();
     this.Web3 = Web3;
     this.provider =
       window['ethereum'] || (window.web3 && window.web3.currentProvider);
@@ -117,6 +121,7 @@ class Cargo extends Emitter {
 
   private setUpWeb3 = () => {
     if (this.provider) {
+      this.providerRequired = false;
       const web3 = new Web3(this.provider);
       this.web3 = web3;
       window.web3 = web3;
@@ -146,9 +151,12 @@ class Cargo extends Emitter {
   public init = async (): Promise<void> => {
     if (this.initialized) return;
 
+    const contracts = await getAllContracts(this.requestUrl);
     // @ts-ignore
-    this.contracts = await getAllContracts(this.requestUrl);
-    this.api = new CargoApi(this.contracts, this.requestUrl, this);
+    this.contracts = contracts;
+    // @ts-ignore
+    this.api = new CargoApi(contracts, this.requestUrl, this);
+    this.pollTx = new PollTx(this);
 
     if (this.provider) {
       this.emit('has-provider-but-not-enabled');
@@ -167,7 +175,15 @@ class Cargo extends Emitter {
     }
   };
 
-  request = (path: string, options?: {}, isJson: boolean = true) => fetch(`${this.requestUrl}${path}`, { cache: 'no-cache', ...options })
+  request = (
+    path: string,
+    options?: {},
+    isJson: boolean = true,
+    rawUrl?: boolean,
+  ) => fetch(`${!rawUrl ? `${this.requestUrl}${path}` : path}`, {
+    cache: 'no-cache',
+    ...options,
+  })
     .then(async res => {
       if (isJson) {
         const json = await res.json();
@@ -199,14 +215,14 @@ class Cargo extends Emitter {
     if (this.setUpWeb3()) {
       try {
         if (window.ethereum && window.ethereum.enable) {
-          this.accounts = await window.ethereum.enable();
+          await window.ethereum.enable();
+          this.accounts = window.web3.eth.accounts;
         } else {
           this.accounts = window.web3.eth.accounts;
         }
         if (!this.accounts) {
           throw new Error('Accounts is undefined. User cancelled');
         }
-        this.pollTx = new PollTx(this);
         this.api.setAccounts(this.accounts);
         this.emit('enabled');
         this.enabled = true;

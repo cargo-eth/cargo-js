@@ -1,6 +1,6 @@
 {
   "name": "@cargo-eth/js",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "main": "./dist/main.js",
   "typings": "./dist/main.d.ts",
   "repository": {
@@ -15,7 +15,7 @@
     "bignumber.js": "^8.1.1",
     "core-js": "2",
     "isomorphic-fetch": "^2.2.1",
-    "web3": "^0.20.7"
+    "web3": "0.20.7"
   },
   "jest": {
     "automock": false,

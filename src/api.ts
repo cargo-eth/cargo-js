@@ -73,6 +73,8 @@ export default class CargoApi {
 
   getOwnedResaleItems = (address: string) => this.request(`/v1/get-owned-resale-items/${address}`);
 
+  getResaleItemsByCrateId = (crateId: string) => this.request(`/v1/get-resale-items-by-crate-id/${crateId}`);
+
   getContractResaleItems = (contracts: Array<string>) => this.request(
     `/v1/get-contract-resale-items?contractIds=${JSON.stringify(contracts)}`,
   );
@@ -611,7 +613,10 @@ export default class CargoApi {
 
   // 🦊
   // Amount is in Wei
-  purchaseResaleToken = async (resaleItemId: string, amount: string) => {
+  purchaseResaleToken = async (
+    resaleItemId: string,
+    amount: string,
+  ): Promise<string> => {
     await this.isEnabledAndHasProvider();
     const {
       cargoSell: { instance },
@@ -627,6 +632,6 @@ export default class CargoApi {
       },
     );
 
-    return tx;
+    return tx as string;
   };
 }
