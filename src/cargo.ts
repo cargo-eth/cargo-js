@@ -31,6 +31,9 @@ export type ContractNames =
   | 'cargoSell'
   | 'cargoData'
   | 'cargoFunds'
+  | 'cargoBatchMint'
+  | 'cargoBatchMintCreator'
+  | 'cargoAssetV2'
   | 'cargoToken'
   | 'cargoVendor'
   | 'cargoAsset';

@@ -143,24 +143,17 @@ export default class CargoApi {
 
   getSignature = (): Promise<string> =>
     new Promise((resolve, reject) => {
-      this.cargo.web3.currentProvider.sendAsync(
-        {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'personal_sign',
-          params: [
-            `You agree that you are rightful owner of the current connected address.\n\n ${
-              this.accounts[0]
-            } \n\n Cargo will use this signature to verify your identity on our server.`,
-            this.accounts[0],
-          ],
-        },
+      this.cargo.web3.personal.sign(
+        `You agree that you are rightful owner of the current connected address.\n\n ${
+          this.accounts[0]
+        } \n\n Cargo will use this signature to verify your identity on our server.`,
+        this.accounts[0],
         (err: Error, result: any) => {
           if (err) return reject(new Error(err.message));
           if (result.error) {
             return reject(new Error(result.error.message));
           }
-          resolve(result.result);
+          resolve(result);
         },
       );
     });
@@ -327,6 +320,35 @@ export default class CargoApi {
         tokenId,
       }),
     });
+  };
+
+  // 🦊
+  createBatchTokenContract = async (
+    vendorId: string,
+    tokenName: string,
+    symbol: string,
+  ) => {
+    await this.isEnabledAndHasProvider();
+    const {
+      cargoBatchMintCreator: { instance: cargoBatchMintCreator },
+      cargoAssetV2: { instance: cargoAssetV2 },
+    } = this.contracts;
+    // @ts-ignore
+    const price = await this.promisifyData(cargoAssetV2.PRICE.call, {
+      from: this.accounts[0],
+    });
+    console.log(cargoBatchMintCreator);
+    const tx = await this.promisify(
+      // @ts-ignore
+      cargoBatchMintCreator.createBatchTokenContract,
+      vendorId,
+      tokenName,
+      symbol,
+      {
+        from: this.accounts[0],
+        value: price,
+      },
+    );
   };
 
   // 🦊
