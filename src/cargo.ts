@@ -31,6 +31,9 @@ export type ContractNames =
   | 'cargoSell'
   | 'cargoData'
   | 'cargoFunds'
+  | 'cargoBatchMint'
+  | 'cargoBatchMintCreator'
+  | 'cargoAssetV2'
   | 'cargoToken'
   | 'cargoVendor'
   | 'cargoAsset';
@@ -117,7 +120,8 @@ class Cargo extends Emitter {
 
   private denominator = new BigNumber(1 * 10 ** 18);
 
-  public getCommission = (percent: number) => this.denominator.times(new BigNumber(percent)).toString();
+  public getCommission = (percent: number) =>
+    this.denominator.times(new BigNumber(percent)).toString();
 
   private setUpWeb3 = () => {
     if (this.provider) {
@@ -180,30 +184,31 @@ class Cargo extends Emitter {
     options?: {},
     isJson: boolean = true,
     rawUrl?: boolean,
-  ) => fetch(`${!rawUrl ? `${this.requestUrl}${path}` : path}`, {
-    cache: 'no-cache',
-    ...options,
-  })
-    .then(async res => {
-      if (isJson) {
-        const json = await res.json();
-        if (res.ok) {
+  ) =>
+    fetch(`${!rawUrl ? `${this.requestUrl}${path}` : path}`, {
+      cache: 'no-cache',
+      ...options,
+    })
+      .then(async res => {
+        if (isJson) {
+          const json = await res.json();
+          if (res.ok) {
+            return {
+              err: false,
+              data: json,
+            };
+          }
           return {
-            err: false,
+            err: true,
             data: json,
           };
+        } else if (res.ok) {
+          return {
+            err: false,
+          };
         }
-        return {
-          err: true,
-          data: json,
-        };
-      } else if (res.ok) {
-        return {
-          err: false,
-        };
-      }
-    })
-    .then(j => j);
+      })
+      .then(j => j);
 
   enabled: boolean = false;
 
