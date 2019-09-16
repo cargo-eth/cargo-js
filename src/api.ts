@@ -1,4 +1,5 @@
 import Cargo, { Contracts, ContractNames } from './cargo';
+import { TokenAddress, TokenId } from './types';
 
 type TMintParams = {
   hasFiles: boolean;
@@ -35,49 +36,84 @@ export default class CargoApi {
   };
 
   // Methods that do not require metamask
-  getBeneficiaryBalance = (beneficiaryId: string) => this.request(`/v1/get-beneficiary-balance/${beneficiaryId}`);
+  getBeneficiaryBalance = (beneficiaryId: string) =>
+    this.request(`/v1/get-beneficiary-balance/${beneficiaryId}`);
 
-  getBeneficiaryById = (beneficiaryId: string) => this.request(`/v1/get-beneficiary-by-id/${beneficiaryId}`);
+  getBeneficiaryById = (beneficiaryId: string) =>
+    this.request(`/v1/get-beneficiary-by-id/${beneficiaryId}`);
 
-  getBeneficiaryVendor = (beneficiaryId: string) => this.request(`/v1/get-beneficiary-vendor/${beneficiaryId}`);
+  getBeneficiaryVendor = (beneficiaryId: string) =>
+    this.request(`/v1/get-beneficiary-vendor/${beneficiaryId}`);
 
-  getContract = (contract: ContractNames) => this.request(`/v1/get-contract/${contract}`);
+  getContract = (contract: ContractNames) =>
+    this.request(`/v1/get-contract/${contract}`);
 
-  getCrateById = (crateId: string) => this.request(`/v1/get-crate-by-id/${crateId}`);
+  getCrateById = (crateId: string) =>
+    this.request(`/v1/get-crate-by-id/${crateId}`);
 
-  getVendorByTokenId = (tokenId: string) => this.request(`/v1/get-vendor-by-token-id/${tokenId}`);
+  getVendorByTokenId = (tokenId: string) =>
+    this.request(`/v1/get-vendor-by-token-id/${tokenId}`);
 
-  getCrateVendors = (crateId: string) => this.request(`/v1/get-crate-vendors/${crateId}`);
+  getCrateVendors = (crateId: string) =>
+    this.request(`/v1/get-crate-vendors/${crateId}`);
 
-  getOwnedResaleItemsByCrateId = (crateId: string, address: string) => this.request(
-    `/v1/get-owned-resale-items-by-crate-id/${crateId}/${address}`,
-  );
+  getOwnedResaleItemsByCrateId = (crateId: string, address: string) =>
+    this.request(
+      `/v1/get-owned-resale-items-by-crate-id/${crateId}/${address}`,
+    );
 
-  getTokenMetadata = (tokenAddress: string, tokenId: string) => this.request(`/v1/get-token-metadata/${tokenAddress}/${tokenId}`);
+  getTokenMetadata = (tokenAddress: string, tokenId: string) =>
+    this.request(`/v1/get-token-metadata/${tokenAddress}/${tokenId}`);
 
-  getMintedTokens = (tokenAddress: string) => this.request(`/v1/get-minted-tokens/${tokenAddress}`);
+  getTokensMetadata = (tokens: [TokenAddress, TokenId[]]) =>
+    this.request(
+      `/v1/get-tokens-metadata`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tokens,
+        }),
+      },
+      true,
+    );
 
-  getResellerBalance = (resellerAddress: string) => this.request(`/v1/get-reseller-balance/${resellerAddress}`);
+  getMintedTokens = (tokenAddress: string) =>
+    this.request(`/v1/get-minted-tokens/${tokenAddress}`);
 
-  getTokenContractById = (tokenContractId: string) => this.request(`/v1/get-token-contract-by-id/${tokenContractId}`);
+  getResellerBalance = (resellerAddress: string) =>
+    this.request(`/v1/get-reseller-balance/${resellerAddress}`);
 
-  getTokenContractByAddress = (tokenAddress: string) => this.request(`/v1/get-token-contract-by-address/${tokenAddress}`);
+  getTokenContractById = (tokenContractId: string) =>
+    this.request(`/v1/get-token-contract-by-id/${tokenContractId}`);
 
-  getVendorBeneficiaries = (vendorId: string) => this.request(`/v1/get-vendor-beneficiaries/${vendorId}`);
+  getTokenContractByAddress = (tokenAddress: string) =>
+    this.request(`/v1/get-token-contract-by-address/${tokenAddress}`);
 
-  getVendorById = (vendorId: string) => this.request(`/v1/get-vendor-by-id/${vendorId}`);
+  getVendorBeneficiaries = (vendorId: string) =>
+    this.request(`/v1/get-vendor-beneficiaries/${vendorId}`);
 
-  getVendorCrate = (vendorId: string) => this.request(`/v1/get-vendor-crate/${vendorId}`);
+  getVendorById = (vendorId: string) =>
+    this.request(`/v1/get-vendor-by-id/${vendorId}`);
 
-  getVendorTokenContracts = (vendorId: string) => this.request(`/v1/get-vendor-token-contracts/${vendorId}`);
+  getVendorCrate = (vendorId: string) =>
+    this.request(`/v1/get-vendor-crate/${vendorId}`);
 
-  getOwnedResaleItems = (address: string) => this.request(`/v1/get-owned-resale-items/${address}`);
+  getVendorTokenContracts = (vendorId: string) =>
+    this.request(`/v1/get-vendor-token-contracts/${vendorId}`);
 
-  getResaleItemsByCrateId = (crateId: string) => this.request(`/v1/get-resale-items-by-crate-id/${crateId}`);
+  getOwnedResaleItems = (address: string) =>
+    this.request(`/v1/get-owned-resale-items/${address}`);
 
-  getContractResaleItems = (contracts: Array<string>) => this.request(
-    `/v1/get-contract-resale-items?contractIds=${JSON.stringify(contracts)}`,
-  );
+  getResaleItemsByCrateId = (crateId: string) =>
+    this.request(`/v1/get-resale-items-by-crate-id/${crateId}`);
+
+  getContractResaleItems = (contracts: Array<string>) =>
+    this.request(
+      `/v1/get-contract-resale-items?contractIds=${JSON.stringify(contracts)}`,
+    );
 
   private requestMintAbi = (
     parameters: TMintParams & { signature: string; account: string },
@@ -105,28 +141,29 @@ export default class CargoApi {
     });
   };
 
-  getSignature = (): Promise<string> => new Promise((resolve, reject) => {
-    this.cargo.web3.currentProvider.sendAsync(
-      {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'personal_sign',
-        params: [
-          `You agree that you are rightful owner of the current connected address.\n\n ${
-            this.accounts[0]
-          } \n\n Cargo will use this signature to verify your identity on our server.`,
-          this.accounts[0],
-        ],
-      },
-      (err: Error, result: any) => {
-        if (err) return reject(new Error(err.message));
-        if (result.error) {
-          return reject(new Error(result.error.message));
-        }
-        resolve(result.result);
-      },
-    );
-  });
+  getSignature = (): Promise<string> =>
+    new Promise((resolve, reject) => {
+      this.cargo.web3.currentProvider.sendAsync(
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'personal_sign',
+          params: [
+            `You agree that you are rightful owner of the current connected address.\n\n ${
+              this.accounts[0]
+            } \n\n Cargo will use this signature to verify your identity on our server.`,
+            this.accounts[0],
+          ],
+        },
+        (err: Error, result: any) => {
+          if (err) return reject(new Error(err.message));
+          if (result.error) {
+            return reject(new Error(result.error.message));
+          }
+          resolve(result.result);
+        },
+      );
+    });
 
   private isEnabledAndHasProvider = async () => {
     if (!this.cargo.enabled) {
@@ -137,76 +174,80 @@ export default class CargoApi {
     }
   };
 
-  private sendTx = (options: Object) => new Promise((resolve, reject) => {
-    this.cargo.web3.eth.sendTransaction(options, (err: Error, tx: string) => {
-      console.log(err);
-      if (!err) {
-        this.cargo.web3.eth.getTransactionReceipt(
-          tx,
-          (err: Error, data: any) => {
-            if (data && data.status === '0x00') {
-              reject('reverted');
-            } else {
-              resolve(tx);
-            }
-          },
-        );
-      }
+  private sendTx = (options: Object) =>
+    new Promise((resolve, reject) => {
+      this.cargo.web3.eth.sendTransaction(options, (err: Error, tx: string) => {
+        console.log(err);
+        if (!err) {
+          this.cargo.web3.eth.getTransactionReceipt(
+            tx,
+            (err: Error, data: any) => {
+              if (data && data.status === '0x00') {
+                reject('reverted');
+              } else {
+                resolve(tx);
+              }
+            },
+          );
+        }
+      });
     });
-  });
 
   // @ts-ignore
-  private promisify = (fn, ...args) => new Promise((resolve, reject) => {
-    // @ts-ignore
-    fn(...args, (err, tx) => {
-      if (!err) {
-        resolve(tx);
-        // Coinbase wallet doesnt seem to work well with getTransactionReceipt
-        // Get the error Unable to get address if we call it immediately after
-        // submitting the transaction, however it does work in metamask.
-        // Fixed in coinbase wallet with a set timeout of 10 seconds, but thats
-        // not reasonable. Commenting out for now and will revist if needed.
+  promisify = (fn, ...args) =>
+    new Promise((resolve, reject) => {
+      // @ts-ignore
+      fn(...args, (err, tx) => {
+        if (!err) {
+          resolve(tx);
+          // Coinbase wallet doesnt seem to work well with getTransactionReceipt
+          // Get the error Unable to get address if we call it immediately after
+          // submitting the transaction, however it does work in metamask.
+          // Fixed in coinbase wallet with a set timeout of 10 seconds, but thats
+          // not reasonable. Commenting out for now and will revist if needed.
 
-        //   // @ts-ignore
-        //   this.cargo.web3.eth.getTransactionReceipt(tx, (err, data) => {
-        //     if (err) {
-        //       return reject(err);
-        //     }
-        //     if (data && data.status === '0x00') {
-        //       return reject(new Error('reverted'));
-        //     } else {
-        //       return resolve(tx);
-        //     }
-        //   });
-      } else {
-        reject(err);
-      }
+          //   // @ts-ignore
+          //   this.cargo.web3.eth.getTransactionReceipt(tx, (err, data) => {
+          //     if (err) {
+          //       return reject(err);
+          //     }
+          //     if (data && data.status === '0x00') {
+          //       return reject(new Error('reverted'));
+          //     } else {
+          //       return resolve(tx);
+          //     }
+          //   });
+        } else {
+          reject(err);
+        }
+      });
     });
-  });
 
-  getTransaction = (hash: string) => new Promise((resolve, reject) => {
-    this.cargo.web3.eth.getTransaction(hash, (err: any, data: any) => {
-      if (err) {
-        return reject(err);
-      } else {
-        return resolve(data);
-      }
+  getTransaction = (hash: string) =>
+    new Promise((resolve, reject) => {
+      this.cargo.web3.eth.getTransaction(hash, (err: any, data: any) => {
+        if (err) {
+          return reject(err);
+        } else {
+          return resolve(data);
+        }
+      });
     });
-  });
 
-  private promisifyData: (fn: Function, ...args: Array<any>) => Promise<any> = (
+  promisifyData: (fn: Function, ...args: Array<any>) => Promise<any> = (
     fn,
     ...args
-  ) => new Promise((resolve, reject) => {
-    // @ts-ignore
-    fn(...args, (err, data) => {
-      if (!err) {
-        return resolve(data);
-      } else {
-        return reject(err);
-      }
+  ) =>
+    new Promise((resolve, reject) => {
+      // @ts-ignore
+      fn(...args, (err, data) => {
+        if (!err) {
+          return resolve(data);
+        } else {
+          return reject(err);
+        }
+      });
     });
-  });
 
   // Methods that require metamask
 
