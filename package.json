@@ -1,6 +1,6 @@
 {
   "name": "@cargo-eth/js",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "main": "./dist/main.js",
   "typings": "./dist/main.d.ts",
   "repository": {
@@ -33,7 +33,7 @@
     "awesome-typescript-loader": "^5.2.1",
     "babel-eslint": "^10.0.1",
     "babel-jest": "^24.8.0",
-    "eslint": "^5.15.1",
+    "eslint": "^6.4.0",
     "eslint-config-airbnb": "^17.1.0",
     "eslint-plugin-flowtype": "^3.4.2",
     "eslint-plugin-import": "^2.16.0",

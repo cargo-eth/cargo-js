@@ -8,3 +8,6 @@ export type TokenMetadata = {
   };
   name: string;
 };
+
+export type TokenAddress = string;
+export type TokenId = string;
