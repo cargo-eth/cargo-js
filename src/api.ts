@@ -3,6 +3,8 @@ import { TokenAddress, TokenId } from './types';
 
 type TMintParams = {
   hasFiles: boolean;
+  batchMint?: boolean;
+  batchNumber?: string;
   vendorId: string;
   tokenAddress: string;
   name?: string;
@@ -256,6 +258,8 @@ export default class CargoApi {
       name,
       description,
       metadata,
+      batchMint,
+      batchNumber,
       to,
     } = parameters;
     const signature = await this.getSignature();
@@ -265,6 +269,8 @@ export default class CargoApi {
       hasFiles,
       files,
       previewImage,
+      batchMint,
+      batchNumber,
       name,
       description,
       signature,
