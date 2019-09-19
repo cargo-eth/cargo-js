@@ -188,27 +188,25 @@ class Cargo extends Emitter {
     fetch(`${!rawUrl ? `${this.requestUrl}${path}` : path}`, {
       cache: 'no-cache',
       ...options,
-    })
-      .then(async res => {
-        if (isJson) {
-          const json = await res.json();
-          if (res.ok) {
-            return {
-              err: false,
-              data: json,
-            };
-          }
-          return {
-            err: true,
-            data: json,
-          };
-        } else if (res.ok) {
+    }).then(async res => {
+      if (isJson) {
+        const json = await res.json();
+        if (res.ok) {
           return {
             err: false,
+            data: json,
           };
         }
-      })
-      .then(j => j);
+        return {
+          err: true,
+          data: json,
+        };
+      } else if (res.ok) {
+        return {
+          err: false,
+        };
+      }
+    });
 
   enabled: boolean = false;
 

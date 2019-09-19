@@ -82,8 +82,12 @@ export default class CargoApi {
       true,
     );
 
-  getMintedTokens = (tokenAddress: string) =>
-    this.request(`/v1/get-minted-tokens/${tokenAddress}`);
+  getMintedTokens = (tokenAddress: string, page?: string) =>
+    this.request(
+      `/v2/get-minted-tokens?tokenAddress=${tokenAddress}${
+        page ? `&page=${page}` : ''
+      }`,
+    );
 
   getResellerBalance = (resellerAddress: string) =>
     this.request(`/v1/get-reseller-balance/${resellerAddress}`);
