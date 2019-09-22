@@ -147,6 +147,26 @@ export default class CargoApi {
     });
   };
 
+  /**
+   * Get a paginated list of owned tokens for a given contract
+   */
+  getOwnedTokensByContract = async (
+    ownerAddress: string,
+    contractAddress: string,
+    page?: string,
+  ) =>
+    this.request(
+      `/v2/get-owned-tokens-by-contract/${ownerAddress}/${contractAddress}${
+        page ? `?page=${page}` : ''
+      }`,
+    );
+
+  /**
+   * Get a list of contracts that a given address owns tokens in
+   */
+  getContractsWithStake = async (ownerAddress: string) =>
+    this.request(`/v2/get-contracts-with-stake/${ownerAddress}`);
+
   getSignature = (): Promise<string> =>
     new Promise((resolve, reject) => {
       this.cargo.web3.personal.sign(
@@ -340,17 +360,16 @@ export default class CargoApi {
   ) => {
     await this.isEnabledAndHasProvider();
     const {
-      cargoBatchMintCreator: { instance: cargoBatchMintCreator },
-      cargoAssetV2: { instance: cargoAssetV2 },
+      cargoTokenV2Creator: { instance: cargoTokenV2Creator },
+      cargoAsset: { instance: cargoAsset },
     } = this.contracts;
     // @ts-ignore
-    const price = await this.promisifyData(cargoAssetV2.PRICE.call, {
+    const price = await this.promisifyData(cargoAsset.PRICE.call, {
       from: this.accounts[0],
     });
-    console.log(cargoBatchMintCreator);
     const tx = await this.promisify(
       // @ts-ignore
-      cargoBatchMintCreator.createBatchTokenContract,
+      cargoTokenV2Creator.createBatchTokenContract,
       vendorId,
       tokenName,
       symbol,
@@ -371,7 +390,7 @@ export default class CargoApi {
   ) => {
     await this.isEnabledAndHasProvider();
     const {
-      cargoAsset: { instance },
+      cargoTokenV1Creator: { instance },
     } = this.contracts;
 
     const tx = await this.promisify(
@@ -441,6 +460,9 @@ export default class CargoApi {
     return tx;
   };
 
+  // DEPRECATED
+  // THIS METHOD WILL NOT WORK WITH BATCHES AND WILL BE REMOVED
+  // Use the getOwnedTokensByContract method for new tokens
   // 🦊
   getOwnedTokenIdsByCargoTokenContractId = async (
     cargoTokenContractId: string,
@@ -466,6 +488,8 @@ export default class CargoApi {
     return data.map(BnId => BnId.toString());
   };
 
+  // DEPRECATED
+  // This is kept around for legacy tokens. Prefer getContractsWithStake for new token contracts
   // 🦊
   // Function that returns cargo contract ids in which user has a stake in
   getOwnedCargoTokenContractIds = async () => {

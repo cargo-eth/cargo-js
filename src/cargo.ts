@@ -32,11 +32,11 @@ export type ContractNames =
   | 'cargoData'
   | 'cargoFunds'
   | 'cargoBatchMint'
-  | 'cargoBatchMintCreator'
-  | 'cargoAssetV2'
+  | 'cargoTokenV1Creator'
+  | 'cargoTokenV2Creator'
+  | 'cargoAsset'
   | 'cargoToken'
-  | 'cargoVendor'
-  | 'cargoAsset';
+  | 'cargoVendor';
 
 type ContractObject = {
   name: ContractNames;
@@ -54,6 +54,16 @@ const REQUEST_URLS: { [N in TNetwork]: string } = {
   development: 'https://dev-api.cargo.engineering',
   production: 'https://api.cargo.build',
 };
+
+export type ResponseType<D> =
+  | {
+      err: true;
+      data: void;
+    }
+  | {
+      err: false;
+      data: D;
+    };
 
 export type Contracts = { [Name in ContractNames]: ContractObject };
 
@@ -171,11 +181,36 @@ class Cargo extends Emitter {
     this.initialized = true;
   };
 
+  // DEPRECATED use createCargoTokenV1Instance
   public createCargoTokenInstance = (address: string) => {
     if (!this.enabled) {
       throw new Error('Enable Cargo before calling this method');
     } else {
       return this.web3.eth.contract(this.contracts.cargoToken.abi).at(address);
+    }
+  };
+
+  createCargoTokenV1Instance = this.createCargoTokenInstance;
+
+  supportsBatchMint = (address: string) => {
+    const token = this.createCargoTokenV1Instance(address);
+    return new Promise(async resolve => {
+      const supportsBatchMint = token.supportsInterface.call(
+        '0x3fa8f388',
+        (_err: any, data: boolean) => {
+          resolve(data);
+        },
+      );
+    });
+  };
+
+  createCargoTokenV2Instance = (address: string) => {
+    if (!this.enabled) {
+      throw new Error('Enable Cargo before calling this method');
+    } else {
+      return this.web3.eth
+        .contract(this.contracts.cargoBatchMint.abi)
+        .at(address);
     }
   };
 
