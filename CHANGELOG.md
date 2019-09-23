@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2019-09-24
+
+### Added
+
+- Added getOwnedTokensByContract method that supports pagination. Metamask not required.
+- Added getContractsWithStake to return all Cargo contracts that a given address owns tokens in.
+- Added createBatchTokenContract api method
+
+### Changed
+
+- Updated getMintedTokens api method to use v2. This supports pagination. The response shape has changed.
+- Update getSignature method to use web3.personal.sign
+- Add batch mint arguments to mint api method
+
 ## [2.1.1] - 2019-09-15
 
 ### Added

@@ -3,6 +3,8 @@ import { TokenAddress, TokenId } from './types';
 
 type TMintParams = {
   hasFiles: boolean;
+  batchMint?: boolean;
+  batchNumber?: string;
   vendorId: string;
   tokenAddress: string;
   name?: string;
@@ -80,8 +82,12 @@ export default class CargoApi {
       true,
     );
 
-  getMintedTokens = (tokenAddress: string) =>
-    this.request(`/v1/get-minted-tokens/${tokenAddress}`);
+  getMintedTokens = (tokenAddress: string, page?: string) =>
+    this.request(
+      `/v2/get-minted-tokens?tokenAddress=${tokenAddress}${
+        page ? `&page=${page}` : ''
+      }`,
+    );
 
   getResellerBalance = (resellerAddress: string) =>
     this.request(`/v1/get-reseller-balance/${resellerAddress}`);
@@ -141,26 +147,39 @@ export default class CargoApi {
     });
   };
 
+  /**
+   * Get a paginated list of owned tokens for a given contract
+   */
+  getOwnedTokensByContract = async (
+    ownerAddress: string,
+    contractAddress: string,
+    page?: string,
+  ) =>
+    this.request(
+      `/v2/get-owned-tokens-by-contract/${ownerAddress}/${contractAddress}${
+        page ? `?page=${page}` : ''
+      }`,
+    );
+
+  /**
+   * Get a list of contracts that a given address owns tokens in
+   */
+  getContractsWithStake = async (ownerAddress: string) =>
+    this.request(`/v2/get-contracts-with-stake/${ownerAddress}`);
+
   getSignature = (): Promise<string> =>
     new Promise((resolve, reject) => {
-      this.cargo.web3.currentProvider.sendAsync(
-        {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'personal_sign',
-          params: [
-            `You agree that you are rightful owner of the current connected address.\n\n ${
-              this.accounts[0]
-            } \n\n Cargo will use this signature to verify your identity on our server.`,
-            this.accounts[0],
-          ],
-        },
+      this.cargo.web3.personal.sign(
+        `You agree that you are rightful owner of the current connected address.\n\n ${
+          this.accounts[0]
+        } \n\n Cargo will use this signature to verify your identity on our server.`,
+        this.accounts[0],
         (err: Error, result: any) => {
           if (err) return reject(new Error(err.message));
           if (result.error) {
             return reject(new Error(result.error.message));
           }
-          resolve(result.result);
+          resolve(result);
         },
       );
     });
@@ -263,6 +282,8 @@ export default class CargoApi {
       name,
       description,
       metadata,
+      batchMint,
+      batchNumber,
       to,
     } = parameters;
     const signature = await this.getSignature();
@@ -272,6 +293,8 @@ export default class CargoApi {
       hasFiles,
       files,
       previewImage,
+      batchMint,
+      batchNumber,
       name,
       description,
       signature,
@@ -330,6 +353,34 @@ export default class CargoApi {
   };
 
   // 🦊
+  createBatchTokenContract = async (
+    vendorId: string,
+    tokenName: string,
+    symbol: string,
+  ) => {
+    await this.isEnabledAndHasProvider();
+    const {
+      cargoTokenV2Creator: { instance: cargoTokenV2Creator },
+      cargoAsset: { instance: cargoAsset },
+    } = this.contracts;
+    // @ts-ignore
+    const price = await this.promisifyData(cargoAsset.PRICE.call, {
+      from: this.accounts[0],
+    });
+    const tx = await this.promisify(
+      // @ts-ignore
+      cargoTokenV2Creator.createBatchTokenContract,
+      vendorId,
+      tokenName,
+      symbol,
+      {
+        from: this.accounts[0],
+        value: price,
+      },
+    );
+  };
+
+  // 🦊
   createTokenContract = async (
     vendorId: string,
     tokenContractName: string,
@@ -339,7 +390,7 @@ export default class CargoApi {
   ) => {
     await this.isEnabledAndHasProvider();
     const {
-      cargoAsset: { instance },
+      cargoTokenV1Creator: { instance },
     } = this.contracts;
 
     const tx = await this.promisify(
@@ -409,6 +460,9 @@ export default class CargoApi {
     return tx;
   };
 
+  // DEPRECATED
+  // THIS METHOD WILL NOT WORK WITH BATCHES AND WILL BE REMOVED
+  // Use the getOwnedTokensByContract method for new tokens
   // 🦊
   getOwnedTokenIdsByCargoTokenContractId = async (
     cargoTokenContractId: string,
@@ -434,6 +488,8 @@ export default class CargoApi {
     return data.map(BnId => BnId.toString());
   };
 
+  // DEPRECATED
+  // This is kept around for legacy tokens. Prefer getContractsWithStake for new token contracts
   // 🦊
   // Function that returns cargo contract ids in which user has a stake in
   getOwnedCargoTokenContractIds = async () => {

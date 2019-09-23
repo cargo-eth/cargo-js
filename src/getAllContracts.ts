@@ -8,6 +8,9 @@ export default async (requestUrl: string) => {
       'cargoFunds',
       'cargoVendor',
       'cargoAsset',
+      'cargoBatchMint',
+      'cargoTokenV1Creator',
+      'cargoTokenV2Creator',
       'cargoToken',
     ].map(name => fetch(url(name))
       .then(res => res.json())
