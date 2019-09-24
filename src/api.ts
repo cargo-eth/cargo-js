@@ -378,6 +378,7 @@ export default class CargoApi {
         value: price,
       },
     );
+    return tx;
   };
 
   // 🦊

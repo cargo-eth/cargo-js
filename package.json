@@ -1,6 +1,6 @@
 {
   "name": "@cargo-eth/js",
-  "version": "2.1.1",
+  "version": "2.2.1",
   "main": "./dist/main.js",
   "typings": "./dist/main.d.ts",
   "repository": {
