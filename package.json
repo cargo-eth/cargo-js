@@ -55,7 +55,7 @@
   },
   "scripts": {
     "build": "rm -r ./dist; NODE_ENV=production yarn webpack --config ./webpack.prod.js",
-    "build:declaration": "tsc --skipLibCheck --emitDeclarationOnly --declarationDir ./dist",
+    "build:types": "tsc --skipLibCheck --emitDeclarationOnly --declarationDir ./dist",
     "develop": "REQUEST_URL='http://localhost:3333' yarn webpack --watch --config ./webpack.dev.js",
     "test": "jest",
     "test:types": "tsc --skipLibCheck",
