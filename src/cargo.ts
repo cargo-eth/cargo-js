@@ -67,6 +67,7 @@ export type ResponseType<D> =
 
 export type Contracts = { [Name in ContractNames]: ContractObject };
 
+
 class Cargo extends Emitter {
   options: CargoOptions;
 
@@ -214,7 +215,7 @@ class Cargo extends Emitter {
     }
   };
 
-  request = (
+  request = <SuccessData, ErrorData>(
     path: string,
     options?: {},
     isJson: boolean = true,
@@ -229,12 +230,12 @@ class Cargo extends Emitter {
         if (res.ok) {
           return {
             err: false,
-            data: json,
+            data: json as SuccessData,
           };
         }
         return {
           err: true,
-          data: json,
+          data: json as ErrorData,
         };
       } else if (res.ok) {
         return {
@@ -252,9 +253,18 @@ class Cargo extends Emitter {
     if (this.enabled) return true;
     if (this.setUpWeb3()) {
       try {
+        if (window.web3.currentProvider.isMetaMask) {
+          // @ts-ignore
+          window.ethereum.on('accountsChanged', accounts => {
+            this.accounts = accounts;
+            this.api.setAccounts(accounts);
+            this.emit('accounts-changed', accounts);
+          });
+        }
+
         if (window.ethereum && window.ethereum.enable) {
-          await window.ethereum.enable();
-          this.accounts = window.web3.eth.accounts;
+          const accounts = await window.ethereum.enable();
+          this.accounts = accounts || window.web3.eth.accounts;
         } else {
           this.accounts = window.web3.eth.accounts;
         }
@@ -265,14 +275,6 @@ class Cargo extends Emitter {
         this.emit('enabled');
         this.enabled = true;
 
-        if (window.web3.currentProvider.isMetaMask) {
-          // @ts-ignore
-          window.ethereum.on('accountsChanged', accounts => {
-            this.accounts = accounts;
-            this.api.setAccounts(accounts);
-            this.emit('accounts-changed', accounts);
-          });
-        }
 
         return true;
       } catch (e) {

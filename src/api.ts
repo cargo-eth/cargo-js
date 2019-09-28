@@ -1,5 +1,5 @@
 import Cargo, { Contracts, ContractNames } from './cargo';
-import { TokenAddress, TokenId } from './types';
+import { TokenAddress, TokenId, ContractResaleItemsResponse, ContractGroupBase } from './types';
 
 type TMintParams = {
   hasFiles: boolean;
@@ -116,10 +116,13 @@ export default class CargoApi {
   getResaleItemsByCrateId = (crateId: string) =>
     this.request(`/v1/get-resale-items-by-crate-id/${crateId}`);
 
-  getContractResaleItems = (contracts: Array<string>) =>
+  DEPRECATED_getContractResaleItems = (contracts: Array<string>) =>
     this.request(
       `/v1/get-contract-resale-items?contractIds=${JSON.stringify(contracts)}`,
     );
+
+  getContractResaleItems = (contractAddress: string, page?: string) =>
+    this.request<ContractResaleItemsResponse, void>(`/v2/get-contract-resale-items/${contractAddress}${page ? `?page=${page}` : ''}`);
 
   private requestMintAbi = (
     parameters: TMintParams & { signature: string; account: string },
@@ -141,7 +144,7 @@ export default class CargoApi {
       const value = rest[key];
       formData.append(key, value);
     });
-    return this.request('/v1/mint', {
+    return this.request<{ abi: string }, void>('/v1/mint', {
       method: 'POST',
       body: formData,
     });
@@ -155,7 +158,7 @@ export default class CargoApi {
     contractAddress: string,
     page?: string,
   ) =>
-    this.request(
+    this.request<ContractGroupBase, void>(
       `/v2/get-owned-tokens-by-contract/${ownerAddress}/${contractAddress}${
         page ? `?page=${page}` : ''
       }`,
@@ -302,7 +305,7 @@ export default class CargoApi {
       metadata,
     });
 
-    if (!res.err) {
+    if (!res.err && res.data) {
       const {
         data: { abi },
       } = res;

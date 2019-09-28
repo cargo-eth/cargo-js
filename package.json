@@ -12,6 +12,7 @@
     "js-yaml": "3.13.1"
   },
   "dependencies": {
+    "@babel/runtime": "^7.6.2",
     "bignumber.js": "^8.1.1",
     "core-js": "2",
     "isomorphic-fetch": "^2.2.1",
@@ -25,14 +26,17 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/plugin-proposal-export-default-from": "^7.5.2",
+    "@babel/plugin-transform-runtime": "^7.6.2",
     "@babel/preset-env": "^7.5.5",
-    "@babel/preset-typescript": "^7.3.3",
+    "@babel/preset-typescript": "^7.6.0",
     "@types/isomorphic-fetch": "^0.0.35",
     "@types/jest": "^24.0.15",
     "@types/web3": "^1.0.18",
     "awesome-typescript-loader": "^5.2.1",
     "babel-eslint": "^10.0.1",
     "babel-jest": "^24.8.0",
+    "babel-loader": "^8.0.6",
     "eslint": "^6.4.0",
     "eslint-config-airbnb": "^17.1.0",
     "eslint-plugin-flowtype": "^3.4.2",
@@ -43,15 +47,18 @@
     "jest-fetch-mock": "^2.1.2",
     "prettier": "1.16.4",
     "source-map-loader": "^0.2.4",
+    "tsc": "^1.20150623.0",
     "typescript": "^3.3.3333",
-    "webpack": "^4.29.6",
-    "webpack-cli": "^3.2.3",
-    "webpack-merge": "^4.2.1"
+    "webpack": "^4.41.0",
+    "webpack-cli": "^3.3.9",
+    "webpack-merge": "^4.2.2"
   },
   "scripts": {
     "build": "rm -r ./dist; NODE_ENV=production yarn webpack --config ./webpack.prod.js",
+    "build:types": "tsc --skipLibCheck --emitDeclarationOnly --declarationDir ./dist",
     "develop": "REQUEST_URL='http://localhost:3333' yarn webpack --watch --config ./webpack.dev.js",
     "test": "jest",
+    "test:types": "tsc --skipLibCheck",
     "pretest": "npm run build",
     "prepublishOnly": "yarn run test && yarn run build"
   },
