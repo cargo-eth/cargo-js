@@ -6,6 +6,11 @@ import {
   ContractGroupBase,
 } from './types';
 
+const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
+
+const signingMessage =
+  "Welcome. By signing this message you are verifying your digital identity. This is completely secure and doesn't cost anything!";
+
 type TMintParams = {
   hasFiles: boolean;
   batchMint?: boolean;
@@ -45,10 +50,8 @@ export default class CargoApi {
 
   getSignature = (): Promise<string> =>
     new Promise((resolve, reject) => {
-      this.cargo.web3.personal.sign(
-        `You agree that you are rightful owner of the current connected address.\n\n ${
-          this.accounts[0]
-        } \n\n Cargo will use this signature to verify your identity on our server.`,
+      this.cargo.web3.eth.personal.sign(
+        signingMessage,
         this.accounts[0],
         (err: Error, result: any) => {
           if (err) return reject(new Error(err.message));
@@ -67,6 +70,11 @@ export default class CargoApi {
     if (this.cargo.providerRequired) {
       throw new Error('Provider required');
     }
+  };
+
+  providerMethod = (fn: Function) => async (...args: any[]) => {
+    await this.isEnabledAndHasProvider();
+    return fn(...args);
   };
 
   private sendTx = (options: Object) =>
@@ -145,4 +153,53 @@ export default class CargoApi {
     });
 
   // Methods that require metamask
+  authenticate = this.providerMethod(async () => {
+    const signature = await this.getSignature();
+    const [account] = this.cargo.accounts;
+    const response = await this.request<{ token: string }, any>(
+      '/v3/authenticate',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: account,
+          signature,
+        }),
+      },
+    );
+
+    if (response.status === 200) {
+      const { token } = response.data;
+      localStorage.setItem(CARGO_LOCAL_STORAGE_TOKEN, token);
+    }
+
+    return response;
+  });
+
+  register = this.providerMethod(async (email: string) => {
+    const signature = await this.getSignature();
+    const [account] = this.cargo.accounts;
+    const response = await this.request<{ token: string }, any>(
+      '/v3/register',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: account,
+          signature,
+          email,
+        }),
+      },
+    );
+
+    if (response.status === 200) {
+      const { token } = response.data;
+      localStorage.setItem(CARGO_LOCAL_STORAGE_TOKEN, token);
+    }
+    return response;
+  });
 }

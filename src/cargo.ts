@@ -177,16 +177,19 @@ class Cargo extends Emitter {
         if (res.ok) {
           return {
             err: false,
+            status: res.status,
             data: json as SuccessData,
           };
         }
         return {
+          status: res.status,
           err: true,
           data: json as ErrorData,
         };
       } else if (res.ok) {
         return {
           err: false,
+          status: res.status,
         };
       }
     });
