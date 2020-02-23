@@ -92,7 +92,10 @@ class Cargo extends Emitter {
 
   getContract?: (contract: ContractNames) => Promise<ContractData>;
 
-  getContractInstance?: (contract: ContractNames) => Promise<typeof Contract>;
+  getContractInstance?: (
+    contract: ContractNames,
+    setAddress?: string,
+  ) => Promise<typeof Contract>;
 
   constructor(options?: CargoOptions) {
     super();
@@ -204,7 +207,10 @@ class Cargo extends Emitter {
     }
     if (this.enabled) return true;
     if (this.setUpWeb3()) {
-      this.getContractInstance = async (contract: ContractNames) => {
+      this.getContractInstance = async (
+        contract: ContractNames,
+        setAddress?: string,
+      ) => {
         if (this.contractInstanceCache[contract]) {
           return this.contractInstanceCache[contract];
         }
@@ -212,7 +218,7 @@ class Cargo extends Emitter {
         const contractInstance = new this.web3.eth.Contract(
           // @ts-ignore
           abi,
-          address,
+          address || setAddress,
         );
         this.contractInstanceCache[contract] = contractInstance;
         return contractInstance;

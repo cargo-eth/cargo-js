@@ -11,6 +11,8 @@ const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
 const signingMessage =
   "Welcome. By signing this message you are verifying your digital identity. This is completely secure and doesn't cost anything!";
 
+type ArgsResponse = { args: string[] };
+
 type TMintParams = {
   hasFiles: boolean;
   batchMint?: boolean;
@@ -28,6 +30,8 @@ type TMintParams = {
 export default class CargoApi {
   requestUrl: string;
 
+  token?: string;
+
   contracts: Contracts;
 
   accounts: Array<string>;
@@ -40,6 +44,7 @@ export default class CargoApi {
     this.requestUrl = requestUrl;
     this.cargo = cargo;
     this.request = cargo.request;
+    this.token = localStorage.getItem(CARGO_LOCAL_STORAGE_TOKEN);
   }
 
   setAccounts = (accounts: Array<string>) => {
@@ -152,7 +157,95 @@ export default class CargoApi {
       });
     });
 
-  // Methods that require metamask
+  /**
+   * Method that checks for a saved token. If no token
+   * is present an error will be thrown.
+   */
+  authenticatedMethod = <TFn extends Function>(fn: TFn) => async <
+    Args extends any[]
+  >(
+    ...args: Args
+  ) => {
+    this.checkForToken();
+    return fn(...args, this.token);
+  };
+
+  checkForToken = () => {
+    if (!this.token) {
+      throw new Error('authentication-required');
+    }
+  };
+
+  /**
+   * ========================
+   * Methods that do not require metamask
+   * ========================
+   */
+
+  addContractToCrate = this.authenticatedMethod(
+    async (contractId: string, crateId: string) => {},
+  );
+
+  getContracts = async (options: {
+    page: string;
+    limit: string;
+    crateId?: string;
+    owned?: boolean;
+  }) => {
+    const headers: { [key: string]: string } = {
+      'Content-Type': 'application/json',
+    };
+
+    const { page, limit, crateId, owned } = options;
+
+    if (this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    let query = `?page=${page || '1'}&limit=${limit || '10'}`;
+
+    if (crateId) {
+      query += `&crateId=${crateId}`;
+    }
+
+    if (owned != null) {
+      if (owned === true) {
+        query += '&owned=true';
+      }
+      if (owned === false) {
+        query += '&owned=false';
+      }
+    }
+
+    return this.request(`/v3/get-contracts${query}`, {
+      headers,
+    });
+  };
+
+  createCrate = this.authenticatedMethod(
+    async (crateName: string, token: string) => {
+      const response = await this.request<{ crateId: string }, any>(
+        '/v3/create-crate',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: crateName,
+          }),
+        },
+      );
+
+      return response;
+    },
+  );
+  /**
+   * ========================
+   * Methods that require metamask
+   * ========================
+   */
   authenticate = this.providerMethod(async () => {
     const signature = await this.getSignature();
     const [account] = this.cargo.accounts;
@@ -172,6 +265,7 @@ export default class CargoApi {
 
     if (response.status === 200) {
       const { token } = response.data;
+      this.token = token;
       localStorage.setItem(CARGO_LOCAL_STORAGE_TOKEN, token);
     }
 
@@ -198,8 +292,240 @@ export default class CargoApi {
 
     if (response.status === 200) {
       const { token } = response.data;
+      this.token = token;
       localStorage.setItem(CARGO_LOCAL_STORAGE_TOKEN, token);
     }
     return response;
   });
+
+  callTxAndPoll = (method: Function) => async (...args: any[]) => {
+    const tx = await method(...args);
+    this.cargo.pollTx.watch(tx);
+    return tx;
+  };
+
+  addVendor = this.providerMethod(
+    this.authenticatedMethod(
+      async (vendorAddress: string, crateId: string, token: string) => {
+        const response = await this.request<ArgsResponse, any>(
+          '/v3/add-vendor',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              vendorAddress,
+              crateId,
+            }),
+          },
+        );
+
+        if (response.err) {
+          throw new Error(JSON.stringify(response));
+        }
+
+        const { args } = response.data;
+
+        const contract = await this.cargo.getContractInstance('cargoVendor');
+
+        return this.callTxAndPoll(contract.methods.addVendor(...args).send)({
+          from: this.cargo.accounts[0],
+        });
+      },
+    ),
+  );
+
+  addBeneficiary = this.providerMethod(
+    this.authenticatedMethod(
+      async (
+        crateId: string,
+        beneficiaryAddress: string,
+        commission: string,
+        token: string,
+      ) => {
+        const response = await this.request<ArgsResponse, any>(
+          '/v3/add-beneficiary',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              crateId,
+              address: beneficiaryAddress,
+              commission,
+            }),
+          },
+        );
+
+        if (response.err) {
+          throw new Error(JSON.stringify(response));
+        }
+
+        const { args } = response.data;
+
+        const contract = await this.cargo.getContractInstance('cargoVendor');
+
+        return this.callTxAndPoll(
+          contract.methods.addBeneficiary(...args).send,
+        )({
+          from: this.cargo.accounts[0],
+        });
+      },
+    ),
+  );
+
+  removeBeneficiary = this.providerMethod(
+    this.authenticatedMethod(
+      async (beneficiaryAddress: string, crateId: string, token: string) => {
+        const response = await this.request<ArgsResponse, any>(
+          '/v3/remove-beneficiary',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              beneficiaryAddress,
+              crateId,
+            }),
+          },
+        );
+
+        if (response.err) {
+          throw new Error(JSON.stringify(response));
+        }
+
+        const { args } = response.data;
+
+        const contract = await this.cargo.getContractInstance('cargoVendor');
+
+        return this.callTxAndPoll(
+          contract.methods.removeBeneficiary(...args).send,
+        )({
+          from: this.cargo.accounts[0],
+        });
+      },
+    ),
+  );
+
+  createContract = this.providerMethod(
+    async (name: string, symbol?: string, crateId?: string) => {
+      // Adding this here instead of using this.authenticatedMethod
+      // because of optional parameters
+      this.checkForToken();
+
+      const response = await this.request<ArgsResponse, any>(
+        '/v3/create-contract',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.token}`,
+          },
+          body: JSON.stringify({
+            name,
+            symbol,
+            crateId,
+          }),
+        },
+      );
+
+      if (response.err) {
+        throw new Error(JSON.stringify(response));
+      }
+
+      const { args } = response.data;
+
+      const cargoAssetContract = await this.cargo.getContractInstance(
+        'cargoAsset',
+      );
+
+      const price = await cargoAssetContract.methods.getPrice('create').call();
+
+      const contract = await this.cargo.getContractInstance('nftCreator');
+
+      return this.callTxAndPoll(contract.methods.createContract(...args).send)({
+        from: this.cargo.accounts[0],
+        value: price,
+      });
+    },
+  );
+
+  mint = this.providerMethod(
+    async (
+      contractAddress: string,
+      amount: string,
+      to: string,
+      name?: string,
+      description?: string,
+      metadata?: Object,
+      previewImage?: File,
+      files?: File[],
+    ) => {
+      this.checkForToken();
+      const cargoAssetInstance = await this.cargo.getContractInstance(
+        'cargoAsset',
+      );
+      const isCargoContract = await cargoAssetInstance.methods
+        .verifyContract(contractAddress)
+        .call();
+
+      if (!isCargoContract) {
+        throw new Error('invalid-contract');
+      }
+
+      const formData = new FormData();
+      formData.append('contractAddress', contractAddress);
+      formData.append('amount', amount);
+      if (name) {
+        formData.append('name', name);
+      }
+      if (description) {
+        formData.append('description', description);
+      }
+      if (metadata) {
+        formData.append('metadata', JSON.stringify(metadata));
+      }
+      if (previewImage) {
+        formData.append('previewImage', previewImage);
+      }
+      if (Array.isArray(files)) {
+        files.forEach(file => {
+          formData.append('file', file);
+        });
+      }
+
+      const response = await this.request<ArgsResponse, any>('/v3/mint', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: formData,
+      });
+
+      if (response.err) {
+        throw new Error(JSON.stringify(response));
+      }
+
+      const { args } = response.data;
+
+      const contract = await this.cargo.getContractInstance(
+        'cargoNft',
+        contractAddress,
+      );
+
+      const int = parseInt(amount);
+      const method =
+        int === 1
+          ? contract.methods.mint(to, ...args)
+          : contract.methods.batchMint(amount, to, ...args);
+
+      return this.callTxAndPoll(method.send)({ from: this.cargo.accounts[0] });
+    },
+  );
 }
