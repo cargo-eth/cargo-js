@@ -4,6 +4,8 @@
     "moduleResolution": "node",
     "preserveConstEnums": true,
     "declaration": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
     "sourceMap": true,
     "outDir": "./dist/",
     "noImplicitAny": true,

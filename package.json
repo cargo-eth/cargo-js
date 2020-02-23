@@ -1,6 +1,6 @@
 {
   "name": "@cargo-eth/js",
-  "version": "2.2.2",
+  "version": "3.0.0",
   "main": "./dist/main.js",
   "typings": "./dist/main.d.ts",
   "repository": {
@@ -16,7 +16,7 @@
     "bignumber.js": "^8.1.1",
     "core-js": "2",
     "isomorphic-fetch": "^2.2.1",
-    "web3": "0.20.7"
+    "web3": "1.2.6"
   },
   "jest": {
     "automock": false,
@@ -32,7 +32,6 @@
     "@babel/preset-typescript": "^7.6.0",
     "@types/isomorphic-fetch": "^0.0.35",
     "@types/jest": "^24.0.15",
-    "@types/web3": "^1.0.18",
     "awesome-typescript-loader": "^5.2.1",
     "babel-eslint": "^10.0.1",
     "babel-jest": "^24.8.0",
@@ -54,7 +53,7 @@
     "webpack-merge": "^4.2.2"
   },
   "scripts": {
-    "build": "rm -r ./dist; NODE_ENV=production yarn webpack --config ./webpack.prod.js",
+    "build": "rm -r ./dist; yarn build:types && NODE_ENV=production yarn webpack --config ./webpack.prod.js",
     "build:types": "tsc --skipLibCheck --emitDeclarationOnly --declarationDir ./dist",
     "develop": "REQUEST_URL='http://localhost:3333' yarn webpack --watch --config ./webpack.dev.js",
     "test": "jest",

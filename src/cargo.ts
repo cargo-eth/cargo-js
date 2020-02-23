@@ -1,14 +1,15 @@
 // @ts-ignore
 import Web3 from 'web3';
 import { Provider } from 'web3/providers';
+import packageJson from '../package.json';
 import Contract from 'web3/eth/contract';
 // @ts-ignore
 import BigNumber from 'bignumber.js';
-import getAllContracts from './getAllContracts';
 import Emitter from './events';
 import CargoApi from './api';
 import PollTx from './pollTx';
 import Utils from './utils';
+import getContractAbi, { ContractData } from './getContractAbi';
 
 export type TNetwork = 'local' | 'development' | 'production';
 
@@ -27,15 +28,10 @@ declare global {
 }
 
 export type ContractNames =
-  | 'cargo'
-  | 'cargoSell'
+  | 'cargoNft'
+  | 'nftCreator'
   | 'cargoData'
-  | 'cargoFunds'
-  | 'cargoBatchMint'
-  | 'cargoTokenV1Creator'
-  | 'cargoTokenV2Creator'
   | 'cargoAsset'
-  | 'cargoToken'
   | 'cargoVendor';
 
 type ContractObject = {
@@ -51,8 +47,8 @@ const DEFAULT_OPTIONS: CargoOptions = {
 
 const REQUEST_URLS: { [N in TNetwork]: string } = {
   local: 'http://localhost:3333',
-  development: 'https://dev-api.cargo.engineering',
-  production: 'https://api.cargo.build',
+  development: 'https://development.cargo.engineering',
+  production: 'https://api2.cargo.build',
 };
 
 export type ResponseType<D> =
@@ -66,7 +62,6 @@ export type ResponseType<D> =
     };
 
 export type Contracts = { [Name in ContractNames]: ContractObject };
-
 
 class Cargo extends Emitter {
   options: CargoOptions;
@@ -89,11 +84,15 @@ class Cargo extends Emitter {
 
   pollTx?: PollTx;
 
-  Web3?: Web3;
+  Web3?: typeof Web3;
 
   provider: Provider;
 
   utils?: Utils;
+
+  getContract?: (contract: ContractNames) => Promise<ContractData>;
+
+  getContractInstance?: (contract: ContractNames) => Promise<typeof Contract>;
 
   constructor(options?: CargoOptions) {
     super();
@@ -123,10 +122,23 @@ class Cargo extends Emitter {
 
     this.requestUrl = REQUEST_URLS[this.options.network];
 
+    this.getContract = getContractAbi(this.requestUrl);
+
     // Verfiy that the network option is valid
     if (!this.requestUrl) {
       throw new Error(`${this.options.network} is not a valid network.`);
     }
+
+    this.api = new CargoApi(this.requestUrl, this);
+    this.pollTx = new PollTx(this);
+
+    if (this.provider) {
+      this.emit('has-provider-but-not-enabled');
+    } else {
+      this.emit('provider-required');
+    }
+
+    this.initialized = true;
   }
 
   private denominator = new BigNumber(1 * 10 ** 18);
@@ -140,7 +152,6 @@ class Cargo extends Emitter {
       const web3 = new Web3(this.provider);
       this.web3 = web3;
       window.web3 = web3;
-      this.initializeContracts();
       return true;
     } else {
       this.emit('provider-required');
@@ -149,71 +160,7 @@ class Cargo extends Emitter {
     }
   };
 
-  private initializeContracts = () => {
-    Object.keys(this.contracts).forEach(name => {
-      // @ts-ignore
-      const data = this.contracts[name];
-      if (name !== 'cargoToken') {
-        // @ts-ignore
-        this.contracts[name].instance = this.web3.eth
-          .contract(data.abi)
-          .at(data.address);
-      }
-    });
-  };
-
-  // @ts-ignore
-  public init = async (): Promise<void> => {
-    if (this.initialized) return;
-
-    const contracts = await getAllContracts(this.requestUrl);
-    // @ts-ignore
-    this.contracts = contracts;
-    // @ts-ignore
-    this.api = new CargoApi(contracts, this.requestUrl, this);
-    this.pollTx = new PollTx(this);
-
-    if (this.provider) {
-      this.emit('has-provider-but-not-enabled');
-    } else {
-      this.emit('provider-required');
-    }
-
-    this.initialized = true;
-  };
-
-  // DEPRECATED use createCargoTokenV1Instance
-  public createCargoTokenInstance = (address: string) => {
-    if (!this.enabled) {
-      throw new Error('Enable Cargo before calling this method');
-    } else {
-      return this.web3.eth.contract(this.contracts.cargoToken.abi).at(address);
-    }
-  };
-
-  createCargoTokenV1Instance = this.createCargoTokenInstance;
-
-  supportsBatchMint = (address: string) => {
-    const token = this.createCargoTokenV1Instance(address);
-    return new Promise(async resolve => {
-      const supportsBatchMint = token.supportsInterface.call(
-        '0x3fa8f388',
-        (_err: any, data: boolean) => {
-          resolve(data);
-        },
-      );
-    });
-  };
-
-  createCargoTokenV2Instance = (address: string) => {
-    if (!this.enabled) {
-      throw new Error('Enable Cargo before calling this method');
-    } else {
-      return this.web3.eth
-        .contract(this.contracts.cargoBatchMint.abi)
-        .at(address);
-    }
-  };
+  public version = packageJson.version;
 
   request = <SuccessData, ErrorData>(
     path: string,
@@ -246,12 +193,27 @@ class Cargo extends Emitter {
 
   enabled: boolean = false;
 
+  contractInstanceCache: { [contract in ContractNames]?: typeof Contract } = {};
+
   public enable = async () => {
     if (!this.initialized) {
       throw new Error('Call cargo.init before calling enable.');
     }
     if (this.enabled) return true;
     if (this.setUpWeb3()) {
+      this.getContractInstance = async (contract: ContractNames) => {
+        if (this.contractInstanceCache[contract]) {
+          return this.contractInstanceCache[contract];
+        }
+        const { abi, address } = await this.getContract(contract);
+        const contractInstance = new this.web3.eth.Contract(
+          // @ts-ignore
+          abi,
+          address,
+        );
+        this.contractInstanceCache[contract] = contractInstance;
+        return contractInstance;
+      };
       try {
         if (window.web3.currentProvider.isMetaMask) {
           // @ts-ignore
@@ -274,7 +236,6 @@ class Cargo extends Emitter {
         this.api.setAccounts(this.accounts);
         this.emit('enabled');
         this.enabled = true;
-
 
         return true;
       } catch (e) {
