@@ -181,6 +181,27 @@ export default class CargoApi {
    * Methods that do not require metamask
    * ========================
    */
+  bulkMetadataUpdate = this.authenticatedMethod(
+    async (
+      contractAddress: string,
+      metadata: {
+        [tokenId: string]: Object;
+      },
+      token: string,
+    ) => {
+      return this.request('/v3/bulk-metadata-update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          contractAddress,
+          metadata,
+        }),
+      });
+    },
+  );
 
   addContractToCrate = this.authenticatedMethod(
     async (contractId: string, crateId: string, token: string) => {
@@ -198,6 +219,31 @@ export default class CargoApi {
     },
   );
 
+  getUserTokensByContract = this.authenticatedMethod(
+    async (
+      options: {
+        page?: string;
+        limit?: string;
+        contractId: string;
+      },
+      token: string,
+    ) => {
+      if (!options || !options.contractId) {
+        throw new Error('Missing contract ID');
+      }
+      let query = '';
+      if (options.limit) {
+        query += `?limit=${options.limit}`;
+      }
+      if (options.page) {
+        query += `${query.length ? '&' : '?'}page=${options.page}`;
+      }
+      return this.request(`/v3/get-user-tokens/${options.contractId}${query}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+  );
+
   getContracts = async (options: {
     page: string;
     limit: string;
@@ -208,7 +254,7 @@ export default class CargoApi {
       'Content-Type': 'application/json',
     };
 
-    const { page, limit, crateId, owned } = options;
+    const { page, limit, crateId, owned } = options || {};
 
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
@@ -383,9 +429,9 @@ export default class CargoApi {
       throw new Error(JSON.stringify(response));
     }
 
-    const { args, signaturesGenerated } = response.data;
+    const { args, signatureGenerated } = response.data;
 
-    if (signaturesGenerated) {
+    if (signatureGenerated) {
       const contract = await this.cargo.getContractInstance('cargoSell');
       return this.callTxAndPoll(contract.methods.cancelSale(...args).send)({
         from: this.cargo.accounts[0],
@@ -394,6 +440,47 @@ export default class CargoApi {
       return response;
     }
   });
+
+  updateBeneficiaryCommission = this.providerMethod(
+    this.authenticatedMethod(
+      async (
+        beneficiaryAddress: string,
+        commission: string,
+        crateId: string,
+        token: string,
+      ) => {
+        const response = await this.request<ArgsResponse, any>(
+          '/v3/update-beneficiary-commission',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              address: beneficiaryAddress,
+              commission,
+              crateId,
+            }),
+          },
+        );
+
+        if (response.err) {
+          throw new Error(JSON.stringify(response));
+        }
+
+        const { args } = response.data;
+
+        const contract = await this.cargo.getContractInstance('cargoVendor');
+
+        return this.callTxAndPoll(
+          contract.methods.updateBeneficiaryCommission(...args).send,
+        )({
+          from: this.cargo.accounts[0],
+        });
+      },
+    ),
+  );
 
   addVendor = this.providerMethod(
     this.authenticatedMethod(
@@ -698,5 +785,38 @@ export default class CargoApi {
         headers,
       });
     },
+  );
+
+  removeVendor = this.providerMethod(
+    this.authenticatedMethod(
+      async (vendorAddress: string, crateId: string, token: string) => {
+        const response = await this.request<ArgsResponse, any>(
+          '/v3/remove-vendor',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              vendorAddress,
+              crateId,
+            }),
+          },
+        );
+
+        if (response.err) {
+          throw new Error(JSON.stringify(response));
+        }
+
+        const { args } = response.data;
+
+        const contract = await this.cargo.getContractInstance('cargoVendor');
+
+        return this.callTxAndPoll(contract.methods.removeVendor(...args).send)({
+          from: this.cargo.accounts[0],
+        });
+      },
+    ),
   );
 }
