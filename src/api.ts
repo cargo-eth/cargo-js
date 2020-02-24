@@ -258,6 +258,47 @@ export default class CargoApi {
    * Methods that require metamask
    * ========================
    */
+  setCrateApplicationFee = this.providerMethod(
+    this.authenticatedMethod(
+      async (fee: number, crateId: string, token: string) => {
+        if (window.isNaN(fee)) {
+          throw new Error(`${fee} is not a valid argument`);
+        }
+        if (!crateId) {
+          throw new Error(`"${crateId}" is not a valid crate ID`);
+        }
+        const response = await this.request<ArgsResponse, any>(
+          '/v3/set-crate-application-fee',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              fee,
+              crateId,
+            }),
+          },
+        );
+
+        if (response.err) {
+          throw new Error(JSON.stringify(response));
+        }
+
+        const { args } = response.data;
+
+        const contract = await this.cargo.getContractInstance('cargoSell');
+
+        return this.callTxAndPoll(
+          contract.methods.setCrateApplicationFee(...args).send,
+        )({
+          from: this.cargo.accounts[0],
+        });
+      },
+    ),
+  );
+
   authenticate = this.providerMethod(async () => {
     const signature = await this.getSignature();
     const [account] = this.cargo.accounts;
@@ -315,6 +356,44 @@ export default class CargoApi {
     this.cargo.pollTx.watch(tx);
     return tx;
   };
+
+  cancelSale = this.providerMethod(async (resaleItemId: string) => {
+    const body: { [key: string]: string } = { resaleItemId };
+    const headers: typeof body = {
+      'Content-Type': 'application/json',
+    };
+    if (!this.token) {
+      const signature = await this.getSignature();
+      body.signature = signature;
+      body.sender = this.cargo.accounts[0];
+    } else {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    const response = await this.request<
+      ArgsResponse & { signaturesGenerated?: boolean },
+      any
+    >('/v3/cancel-sale', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (response.err) {
+      throw new Error(JSON.stringify(response));
+    }
+
+    const { args, signaturesGenerated } = response.data;
+
+    if (signaturesGenerated) {
+      const contract = await this.cargo.getContractInstance('cargoSell');
+      return this.callTxAndPoll(contract.methods.cancelSale(...args).send)({
+        from: this.cargo.accounts[0],
+      });
+    } else {
+      return response;
+    }
+  });
 
   addVendor = this.providerMethod(
     this.authenticatedMethod(
@@ -541,14 +620,43 @@ export default class CargoApi {
     },
   );
 
+  purchase = this.providerMethod(
+    async (tokenId: string, contractAddress: string) => {
+      const response = await this.request<ArgsResponse, any>('/v3/purchase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tokenId,
+          contractAddress,
+          sender: this.cargo.accounts[0],
+        }),
+      });
+
+      if (response.err) {
+        throw new Error(JSON.stringify(response));
+      }
+
+      const { args, price } = response.data;
+
+      const contract = await this.cargo.getContractInstance('cargoSell');
+
+      return this.callTxAndPoll(contract.methods.purchase(...args).send)({
+        from: this.cargo.accounts[0],
+        value: price,
+      });
+    },
+  );
+
   sell = this.providerMethod(
     async (
-      sender: string,
       contractAddress: string,
       tokenId: string,
       price: string,
       crateId?: string,
     ) => {
+      const [sender] = this.cargo.accounts;
       const body: { [key: string]: string } = {
         sender,
         contractAddress,
