@@ -32,6 +32,7 @@ export type ContractNames =
   | 'nftCreator'
   | 'cargoData'
   | 'cargoAsset'
+  | 'cargoSell'
   | 'cargoVendor';
 
 type ContractObject = {

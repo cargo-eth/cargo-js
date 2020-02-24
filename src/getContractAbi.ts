@@ -7,6 +7,7 @@ const VALID_CONTRACTS: ContractNames[] = [
   'cargoData',
   'cargoAsset',
   'cargoVendor',
+  'cargoSell',
 ];
 
 const CARGO_LOCAL_STORAGE_KEY = `__CARGO_LS_KEY__${packageJson.version}`;

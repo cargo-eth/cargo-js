@@ -183,7 +183,19 @@ export default class CargoApi {
    */
 
   addContractToCrate = this.authenticatedMethod(
-    async (contractId: string, crateId: string) => {},
+    async (contractId: string, crateId: string, token: string) => {
+      return this.request<ArgsResponse, any>('/v3/add-contract-to-crate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          crateId,
+          contractId,
+        }),
+      });
+    },
   );
 
   getContracts = async (options: {
@@ -526,6 +538,57 @@ export default class CargoApi {
           : contract.methods.batchMint(amount, to, ...args);
 
       return this.callTxAndPoll(method.send)({ from: this.cargo.accounts[0] });
+    },
+  );
+
+  sell = this.providerMethod(
+    async (
+      sender: string,
+      contractAddress: string,
+      tokenId: string,
+      price: string,
+      crateId?: string,
+    ) => {
+      const body: { [key: string]: string } = {
+        sender,
+        contractAddress,
+        tokenId,
+        price,
+        crateId,
+      };
+
+      const { address: cargoSellAddress } = await this.cargo.getContract(
+        'cargoSell',
+      );
+      const contract = await this.cargo.getContractInstance(
+        'cargoNft',
+        contractAddress,
+      );
+
+      const isApproved = await contract.methods
+        .isApprovedForAll(sender, cargoSellAddress)
+        .call();
+
+      if (!isApproved) {
+        await contract.methods.setApprovalForAll(cargoSellAddress, true).send({
+          from: this.accounts[0],
+        });
+      }
+
+      const headers: { [key: string]: string } = {
+        'Content-Type': 'application/json',
+      };
+      if (!this.token) {
+        body.signature = await this.getSignature();
+      } else {
+        headers.Authorization = `Bearer ${this.token}`;
+      }
+
+      return await this.request('/v3/sell', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers,
+      });
     },
   );
 }
