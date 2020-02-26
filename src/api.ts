@@ -8,6 +8,9 @@ import {
 
 const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
 
+const addToQuery = (query: string, addition: string): string =>
+  `${query}${query ? '&' : '?'}${addition}`;
+
 const signingMessage =
   "Welcome. By signing this message you are verifying your digital identity. This is completely secure and doesn't cost anything!";
 
@@ -243,6 +246,52 @@ export default class CargoApi {
       });
     },
   );
+
+  getResaleItems = async (options: {
+    crateId?: string;
+    contractId?: string;
+    page?: string;
+    limit?: string;
+    owned?: string;
+  }) => {
+    const headers: { [key: string]: string } = {
+      'Content-Type': 'application/json',
+    };
+
+    const { page, limit, crateId, contractId, owned } = options || {};
+
+    if (owned && !this.token) {
+      throw new Error(
+        'Must be authenticated when requesting owned resale items',
+      );
+    }
+
+    if (owned && this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    let query = '';
+
+    if (page) {
+      query = addToQuery(query, `page=${page}`);
+    }
+
+    if (limit) {
+      query = addToQuery(query, `limit=${limit}`);
+    }
+
+    if (contractId) {
+      query = addToQuery(query, `contractId=${contractId}`);
+    }
+
+    if (crateId) {
+      query = addToQuery(query, `crateId=${crateId}`);
+    }
+
+    return this.request(`/v3/get-resale-items${query}`, {
+      headers,
+    });
+  };
 
   getContracts = async (options: {
     page: string;
