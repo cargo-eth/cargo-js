@@ -5,10 +5,10 @@ export * from './ResaleItemGroups';
 export type TokenMetadata = {
   name: string;
   description: string;
-  image: string
-  metadata:  { [key: string]: any };
+  image: string;
+  metadata: { [key: string]: any };
   edition?: string;
-}
+};
 
 export type Token = {
   tokenURI: string;
@@ -37,11 +37,29 @@ export type ResaleItem = {
   price: string;
   fromVendor: boolean;
   metadata: TokenMetadata;
-}
+};
 
 export type ContractResaleItemsResponse = {
   currentPage: string;
   totalPages: string;
   total: string;
-  resaleItems: ResaleItem[]
-}
+  resaleItems: ResaleItem[];
+};
+
+export type VendorBeneficiaryV3 = {
+  address: string;
+  commission: string;
+  vendorAddress: string;
+  crateId: string;
+  createdAt: string;
+};
+
+export type CrateVendorV3 = {
+  address: string;
+  _id: string;
+};
+
+export type UserCrateV3 = {
+  name: string;
+  id: string;
+};
