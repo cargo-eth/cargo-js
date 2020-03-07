@@ -7,12 +7,20 @@ import {
   VendorBeneficiaryV3,
   CrateVendorV3,
   UserCrateV3,
+  GetOrderParams,
+  GetUserTokensByContractParams,
 } from './types';
 
 const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
 
 const addToQuery = (query: string, addition: string): string =>
   `${query}${query ? '&' : '?'}${addition}`;
+
+const getQuery = (options: { [key: string]: string }): string =>
+  Object.entries(options).reduce((a, [key, val]) => {
+    a = addToQuery(a, `${key}=${val}`);
+    return a;
+  }, '');
 
 const signingMessage =
   "Welcome. By signing this message you are verifying your digital identity. This is completely secure and doesn't cost anything!";
@@ -243,23 +251,28 @@ export default class CargoApi {
     CargoApi['_addContractToCreate']
   >(this._addContractToCreate);
 
-  getUserTokensByContract = this.authenticatedMethod(
-    async (options: { page?: string; limit?: string; contractId: string }) => {
-      if (!options || !options.contractId) {
-        throw new Error('Missing contract ID');
-      }
-      let query = '';
-      if (options.limit) {
-        query += `?limit=${options.limit}`;
-      }
-      if (options.page) {
-        query += `${query.length ? '&' : '?'}page=${options.page}`;
-      }
-      return this.request(`/v3/get-user-tokens/${options.contractId}${query}`, {
-        headers: { Authorization: `Bearer ${this.token}` },
-      });
-    },
-  );
+  private _getUserTokensByContract = async (
+    options: GetUserTokensByContractParams,
+  ) => {
+    if (!options || !options.contractId) {
+      throw new Error('Missing contract ID');
+    }
+    let query = '';
+    if (options.limit) {
+      query += `?limit=${options.limit}`;
+    }
+    if (options.page) {
+      query += `${query.length ? '&' : '?'}page=${options.page}`;
+    }
+    return this.request(`/v3/get-user-tokens/${options.contractId}${query}`, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+  };
+
+  public getUserTokensByContract = this.authenticatedMethod<
+    [GetUserTokensByContractParams],
+    CargoApi['_getUserTokensByContract']
+  >(this._getUserTokensByContract);
 
   getResaleItems = async (options: {
     crateId?: string;
@@ -343,7 +356,7 @@ export default class CargoApi {
     });
   };
 
-  createCrate = this.authenticatedMethod(async (crateName: string) => {
+  private _createCrate = async (crateName: string) => {
     const response = await this.request<{ crateId: string }, any>(
       '/v3/create-crate',
       {
@@ -359,7 +372,12 @@ export default class CargoApi {
     );
 
     return response;
-  });
+  };
+
+  public createCrate = this.authenticatedMethod<
+    [string],
+    CargoApi['_createCrate']
+  >(this._createCrate);
   /**
    * ========================
    * Methods that require metamask
@@ -925,4 +943,18 @@ export default class CargoApi {
     this.request<PaginationResponseWithResults<Object>, any>(
       `/v3/get-tokens-by-contract/${contractAddress}`,
     );
+
+  private _getOrders = async (options: GetOrderParams) => {
+    const query = getQuery(options);
+    return this.request(`/v3/get-orders${query}`, {
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+      },
+    });
+  };
+
+  public getOrders = this.authenticatedMethod<
+    [GetOrderParams],
+    CargoApi['_getOrders']
+  >(this._getOrders);
 }

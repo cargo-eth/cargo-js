@@ -63,3 +63,20 @@ export type UserCrateV3 = {
   name: string;
   id: string;
 };
+
+export type GetOrderParams = {
+  limit?: string;
+  page?: string;
+  vendorId?: string;
+  contractAddress?: string;
+  sellerAddress?: string;
+  buyerAddress?: string;
+  tokenId?: string;
+  crateId?: string;
+};
+
+export type GetUserTokensByContractParams = {
+  page?: string;
+  limit?: string;
+  contractId: string;
+};
