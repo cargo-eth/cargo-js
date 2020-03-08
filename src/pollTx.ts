@@ -32,11 +32,13 @@ class Emitter {
   }
 }
 
-const getBlock = (web3: Web3, ...args: any[]): Promise<number> => new Promise(resolve => {
-  web3.eth.getBlock(...args, (err: {}, block: { number: number }) => {
-    resolve(err || !block ? -1 : block.number);
+const getBlock = (web3: Web3, ...args: any[]): Promise<number> =>
+  new Promise(resolve => {
+    // @ts-ignore
+    web3.eth.getBlock(...args, (err: {}, block: { number: number }) => {
+      resolve(err || !block ? -1 : block.number);
+    });
   });
-});
 
 export default class PollTx extends Emitter {
   pending: string[];
@@ -79,20 +81,21 @@ export default class PollTx extends Emitter {
 
     if (completed.length > 0) {
       await Promise.all(
-        completed.map((tx: { blockNumber: number; hash: string }) => (async () => {
-          const { blockNumber } = tx;
-          let block;
+        completed.map((tx: { blockNumber: number; hash: string }) =>
+          (async () => {
+            const { blockNumber } = tx;
+            let block;
 
-          try {
-            block = await getBlock(this.cargo.web3, 'latest');
-          } catch (e) {
-            console.error(e.message);
-          }
+            try {
+              block = await getBlock(this.cargo.web3, 'latest');
+            } catch (e) {
+              console.error(e.message);
+            }
 
-          if (block && block - blockNumber >= 0) {
-            this.completedFn(tx);
-          }
-        })(),
+            if (block && block - blockNumber >= 0) {
+              this.completedFn(tx);
+            }
+          })(),
         ),
       );
     }

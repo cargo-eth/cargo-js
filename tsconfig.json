@@ -5,14 +5,13 @@
     "preserveConstEnums": true,
     "declaration": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "outDir": "./dist/",
-    "noImplicitAny": true,
     "module": "esnext",
     "target": "es5",
-    "lib": ["es2015", "dom"]
+    "lib": ["ES2018", "dom"]
   },
-  "include": ["./src"],
+  "include": ["./src/**/*"],
   "exclude": ["node_modules", "./src/test/**/*"]
 }

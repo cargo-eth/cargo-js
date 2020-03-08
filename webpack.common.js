@@ -2,7 +2,10 @@ const package = require('./package.json');
 module.exports = {
   entry: './src/main.ts',
   output: {
-    filename: process.env.BUILD_WITH_VERSION === 'true' ? `cargo.${package.version}.js` : 'main.js',
+    filename:
+      process.env.BUILD_WITH_VERSION === 'true'
+        ? `cargo.${package.version}.js`
+        : 'main.js',
     path: `${__dirname}/dist`,
     umdNamedDefine: true,
     library: 'Cargo',
@@ -14,6 +17,8 @@ module.exports = {
     // Add '.ts' and '.tsx' as resolvable extensions.
     extensions: ['.ts', '.tsx', '.js', '.json'],
   },
+
+  externals: ['web3', /^web3\/.+$/],
 
   module: {
     rules: [

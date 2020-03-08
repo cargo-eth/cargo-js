@@ -78,6 +78,7 @@ export default class CargoApi {
       this.cargo.web3.eth.personal.sign(
         signingMessage,
         this.accounts[0],
+        // @ts-ignore
         (err: Error, result: any) => {
           if (err) return reject(new Error(err.message));
           if (result.error) {
@@ -181,9 +182,9 @@ export default class CargoApi {
    * Method that checks for a saved token. If no token
    * is present an error will be thrown.
    */
-  authenticatedMethod = <T extends any[], F>(fn: F) => async (
+  authenticatedMethod = <T extends any[], F extends Function>(fn: F) => async (
     ...args: T
-  ): Promise<ReturnType<F>> => {
+  ): Promise<ReturnType<(...args: any) => any>> => {
     this.checkForToken();
     return fn(...args);
   };

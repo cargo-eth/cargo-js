@@ -1,7 +1,9 @@
 // @ts-ignore
 import Web3 from 'web3';
+// @ts-ignore
 import { Provider } from 'web3/providers';
 import packageJson from '../package.json';
+// @ts-ignore
 import Contract from 'web3/eth/contract';
 // @ts-ignore
 import BigNumber from 'bignumber.js';
@@ -24,6 +26,7 @@ declare global {
   interface Window {
     ethereum?: Provider & { enable: () => Array<string> };
     web3?: Web3;
+    isNaN: Function;
   }
 }
 
@@ -77,7 +80,7 @@ class Cargo extends Emitter {
 
   web3?: Web3;
 
-  providerRequired?: boolean;
+  hasProvider?: boolean;
 
   api?: CargoApi;
 
@@ -105,7 +108,7 @@ class Cargo extends Emitter {
     this.Web3 = Web3;
     this.provider =
       window['ethereum'] || (window.web3 && window.web3.currentProvider);
-    this.providerRequired = !this.provider;
+    this.hasProvider = !!this.provider;
 
     if (options) {
       if (!(typeof options === 'object' && !Array.isArray(options))) {
