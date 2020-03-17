@@ -4,11 +4,14 @@ import {
   TokenId,
   ContractResaleItemsResponse,
   ContractGroupBase,
+  PaginationResponseWithResults,
   VendorBeneficiaryV3,
   CrateVendorV3,
   UserCrateV3,
   GetOrderParams,
   GetUserTokensByContractParams,
+  ContractMetadata,
+  TokenDetail,
 } from './types';
 
 const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
@@ -26,25 +29,16 @@ const signingMessage =
   "Welcome. By signing this message you are verifying your digital identity. This is completely secure and doesn't cost anything!";
 
 type ArgsResponse = { args: string[] };
-type PaginationResponseWithResults<R> = {
-  page: string;
-  totalPages: string;
-  limit: string;
-  results: R;
-};
 
-type TMintParams = {
-  hasFiles: boolean;
-  batchMint?: boolean;
-  batchNumber?: string;
-  vendorId: string;
-  tokenAddress: string;
+type MintParams = {
+  contractAddress: string;
+  amount: string;
+  to: string;
   name?: string;
   description?: string;
-  metadata?: string;
-  files: File[];
-  previewImage: File;
-  to?: string;
+  metadata?: Object;
+  previewImage?: File;
+  files?: File[];
 };
 
 export default class CargoApi {
@@ -73,8 +67,11 @@ export default class CargoApi {
 
   // Methods that do not require metamask
 
-  getSignature = (): Promise<string> =>
-    new Promise((resolve, reject) => {
+  getSignature = (): Promise<string> => {
+    if (window.sessionStorage.getItem('__CARGO_SIG__')) {
+      return Promise.resolve(window.sessionStorage.getItem('__CARGO_SIG__'));
+    }
+    return new Promise((resolve, reject) => {
       this.cargo.web3.eth.personal.sign(
         signingMessage,
         this.accounts[0],
@@ -84,10 +81,12 @@ export default class CargoApi {
           if (result.error) {
             return reject(new Error(result.error.message));
           }
+          window.sessionStorage.setItem('__CARGO_SIG__', result);
           resolve(result);
         },
       );
     });
+  };
 
   private isEnabledAndHasProvider = async () => {
     if (!this.cargo.enabled) {
@@ -98,7 +97,9 @@ export default class CargoApi {
     }
   };
 
-  providerMethod = <T extends any[]>(fn: Function) => async (...args: T[]) => {
+  providerMethod = <T extends any[], F extends Function>(fn: F) => async (
+    ...args: T
+  ) => {
     await this.isEnabledAndHasProvider();
     return fn(...args);
   };
@@ -326,6 +327,7 @@ export default class CargoApi {
     limit: string;
     crateId?: string;
     owned?: boolean;
+    useAuthToken?: boolean;
   }) => {
     const headers: { [key: string]: string } = {
       'Content-Type': 'application/json',
@@ -350,6 +352,10 @@ export default class CargoApi {
       if (owned === false) {
         query += '&owned=false';
       }
+    }
+
+    if (options.useAuthToken) {
+      query = addToQuery(query, 'useAuthToken=true');
     }
 
     return this.request(`/v3/get-contracts${query}`, {
@@ -423,6 +429,22 @@ export default class CargoApi {
     }),
   );
 
+  private _getPurchasableBalances = async () => {
+    const cargoAsset = await this.cargo.getContractInstance('cargoAsset');
+    const total = await cargoAsset.methods.totalPurchasableBalances().call();
+    let p = [];
+    for (let i = 0; i < new this.cargo.BigNumber(total).toNumber(); i++) {
+      p.push(cargoAsset.methods.getPurchasableBalanceByIndex(i).call());
+    }
+    p = await Promise.all(p);
+    return p;
+  };
+
+  getPurchasableBalances = this.providerMethod<
+    [],
+    CargoApi['_getPurchasableBalances']
+  >(this._getPurchasableBalances);
+
   authenticate = this.providerMethod(async () => {
     const signature = await this.getSignature();
     const [account] = this.cargo.accounts;
@@ -449,7 +471,7 @@ export default class CargoApi {
     return response;
   });
 
-  register = this.providerMethod(async (email: string) => {
+  register = this.providerMethod(async (email: string, username: string) => {
     const signature = await this.getSignature();
     const [account] = this.cargo.accounts;
     const response = await this.request<{ token: string }, any>(
@@ -463,6 +485,7 @@ export default class CargoApi {
           address: account,
           signature,
           email,
+          username,
         }),
       },
     );
@@ -662,65 +685,70 @@ export default class CargoApi {
     ),
   );
 
-  createContract = this.providerMethod(
-    async (name: string, symbol?: string, crateId?: string) => {
-      // Adding this here instead of using this.authenticatedMethod
-      // because of optional parameters
-      this.checkForToken();
+  private _createContract = async (
+    name: string,
+    symbol?: string,
+    crateId?: string,
+  ) => {
+    // Adding this here instead of using this.authenticatedMethod
+    // because of optional parameters
+    this.checkForToken();
 
-      const response = await this.request<ArgsResponse, any>(
-        '/v3/create-contract',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.token}`,
-          },
-          body: JSON.stringify({
-            name,
-            symbol,
-            crateId,
-          }),
+    const response = await this.request<ArgsResponse, any>(
+      '/v3/create-contract',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.token}`,
         },
-      );
+        body: JSON.stringify({
+          name,
+          symbol,
+          crateId,
+        }),
+      },
+    );
 
-      if (response.err) {
-        throw new Error(JSON.stringify(response));
-      }
+    if (response.err) {
+      throw new Error(JSON.stringify(response));
+    }
 
-      const { args } = response.data;
+    const { args } = response.data;
 
-      const cargoAssetContract = await this.cargo.getContractInstance(
-        'cargoAsset',
-      );
+    const cargoAssetContract = await this.cargo.getContractInstance(
+      'cargoAsset',
+    );
 
-      const price = await cargoAssetContract.methods.getPrice('create').call();
+    const price = await cargoAssetContract.methods.getPrice('create').call();
 
-      const contract = await this.cargo.getContractInstance('nftCreator');
+    const contract = await this.cargo.getContractInstance('nftCreator');
 
-      return this.callTxAndPoll(contract.methods.createContract(...args).send)({
-        from: this.cargo.accounts[0],
-        value: price,
-      });
-    },
-  );
+    return this.callTxAndPoll(contract.methods.createContract(...args).send)({
+      from: this.cargo.accounts[0],
+      value: price,
+    });
+  };
+
+  public createContract = this.providerMethod<
+    [string, string?, string?],
+    CargoApi['_createContract']
+  >(this._createContract);
 
   mint = this.providerMethod(
-    async (
-      contractAddress: string,
-      amount: string,
-      to: string,
-      name?: string,
-      description?: string,
-      metadata?: Object,
-      previewImage?: File,
-      files?: File[],
-    ) => {
+    async ({
+      contractAddress,
+      amount,
+      to,
+      name,
+      description,
+      metadata,
+      previewImage,
+      files,
+    }: MintParams) => {
       this.checkForToken();
-      const cargoAssetInstance = await this.cargo.getContractInstance(
-        'cargoAsset',
-      );
-      const isCargoContract = await cargoAssetInstance.methods
+      const cargoData = await this.cargo.getContractInstance('cargoData');
+      const isCargoContract = await cargoData.methods
         .verifyContract(contractAddress)
         .call();
 
@@ -940,10 +968,35 @@ export default class CargoApi {
     CargoApi['_getUserCrates']
   >(this._getUserCrates);
 
-  public getTokensByContract = async (contractAddress: string) =>
-    this.request<PaginationResponseWithResults<Object>, any>(
-      `/v3/get-tokens-by-contract/${contractAddress}`,
+  public getTokenDetails = async (contractAddress: string, tokenId: string) => {
+    return this.request<TokenDetail, any>(
+      `/v3/get-token-details/${contractAddress}/${tokenId}`,
     );
+  };
+
+  public getTokensByContract = async ({
+    contractAddress,
+    page,
+    limit,
+  }: {
+    contractAddress: string;
+    page?: string;
+    limit?: string;
+  }) => {
+    let query = '';
+
+    if (page) {
+      query = addToQuery(query, `page=${page}`);
+    }
+
+    if (limit) {
+      query = addToQuery(query, `limit=${limit}`);
+    }
+
+    return this.request<PaginationResponseWithResults<Object>, any>(
+      `/v3/get-tokens-by-contract/${contractAddress}${query}`,
+    );
+  };
 
   private _getOrders = async (options: GetOrderParams) => {
     const query = getQuery(options);
@@ -958,4 +1011,10 @@ export default class CargoApi {
     [GetOrderParams],
     CargoApi['_getOrders']
   >(this._getOrders);
+
+  public getContractMetadata = async (contractAddress: string) => {
+    return this.request<ContractMetadata, any>(
+      `/v3/get-contract-metadata/${contractAddress}`,
+    );
+  };
 }

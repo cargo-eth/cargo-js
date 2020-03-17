@@ -75,8 +75,55 @@ export type GetOrderParams = {
   crateId?: string;
 };
 
+export type ContractV3 = {
+  address: string;
+  name: string;
+  symbol: string;
+  supportsMetadata: boolean;
+  tags?: string[];
+  createdAt: string;
+};
+
 export type GetUserTokensByContractParams = {
   page?: string;
   limit?: string;
   contractId: string;
+};
+
+export type PaginationResponseWithResults<R> = {
+  page: string;
+  totalPages: string;
+  limit: string;
+  results: R;
+};
+
+export type ContractMetadata = {
+  address: string;
+  name: string;
+  symbol: string;
+  supportsMetadata: boolean;
+  tags: string[];
+  createdAt: string;
+};
+
+export type ResaleItemV3 = {
+  seller: string;
+  contract: string;
+  tokenId: string;
+  price: string;
+  signatureGenerated: boolean;
+  groupId: string;
+  crate?: string;
+  createdAt: string;
+};
+
+export type TokenDetail = {
+  owner?: string;
+  ownerAddress: string;
+  resaleItem?: ResaleItemV3;
+  tokenId: string;
+  metadata?: Object;
+  tokenURI: string;
+  contractName: string;
+  contractSymbol: string;
 };
