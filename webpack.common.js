@@ -1,18 +1,13 @@
-const package = require('./package.json');
 module.exports = {
   entry: './src/main.ts',
   output: {
-    filename:
-      process.env.BUILD_WITH_VERSION === 'true'
-        ? `cargo.${package.version}.js`
-        : 'main.js',
+    filename: 'main.js',
     path: `${__dirname}/dist`,
     umdNamedDefine: true,
     library: 'Cargo',
     libraryExport: 'default',
     libraryTarget: 'umd',
   },
-
   resolve: {
     // Add '.ts' and '.tsx' as resolvable extensions.
     extensions: ['.ts', '.tsx', '.js', '.json'],

@@ -37,6 +37,7 @@
     "babel-eslint": "^10.0.1",
     "babel-jest": "^24.8.0",
     "babel-loader": "^8.0.6",
+    "web3": "1.2.6",
     "eslint": "^6.4.0",
     "eslint-config-airbnb": "^17.1.0",
     "eslint-plugin-flowtype": "^3.4.2",
@@ -55,7 +56,7 @@
     "webpack-merge": "^4.2.2"
   },
   "scripts": {
-    "build": "rm -r ./dist; yarn build:types && NODE_ENV=production yarn webpack --config ./webpack.prod.js",
+    "build": "rm -r ./dist; yarn build:types && NODE_ENV=production yarn webpack --config ./webpack.prod.js && NODE_ENV=production yarn webpack --config ./webpack.client.prod.js",
     "build:types": "tsc -p ./tsconfig.json --emitDeclarationOnly --declarationDir ./dist; mv ./dist/src/* ./dist; rm -r ./dist/src; exit 0",
     "develop": "REQUEST_URL='http://localhost:3333' yarn webpack --watch --config ./webpack.dev.js",
     "test": "jest",
