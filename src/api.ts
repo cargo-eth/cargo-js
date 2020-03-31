@@ -13,6 +13,7 @@ import {
   ContractMetadata,
   TokenDetail,
   GetUserShowcaseArgs,
+  ContractV3,
 } from './types';
 
 const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
@@ -357,9 +358,12 @@ export default class CargoApi {
       query = addToQuery(query, 'useAuthToken=true');
     }
 
-    return this.request(`/v3/get-contracts${query}`, {
-      headers,
-    });
+    return this.request<PaginationResponseWithResults<ContractV3>, any>(
+      `/v3/get-contracts${query}`,
+      {
+        headers,
+      },
+    );
   };
 
   private _createShowcase = async (crateName: string) => {
@@ -933,6 +937,18 @@ export default class CargoApi {
     CargoApi['_getVendorBeneficiaries']
   >(this._getVendorBeneficiaries);
 
+  private _getIndexStatus = async () =>
+    this.request<{ indexed: boolean }, any>('/v3/get-index-status', {
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+      },
+    });
+
+  public getIndexStatus = this.authenticatedMethod<
+    [],
+    CargoApi['_getIndexStatus']
+  >(this._getIndexStatus);
+
   private _getShowcaseVendors = async (crateId: string) =>
     this.request<PaginationResponseWithResults<CrateVendorV3>, any>(
       `/v3/get-crate-vendors/${crateId}`,
@@ -949,7 +965,10 @@ export default class CargoApi {
     CargoApi['_getShowcaseVendors']
   >(this._getShowcaseVendors);
 
-  private _getUserShowcases = async ({ page, limit }: GetUserShowcaseArgs) => {
+  private _getUserShowcases = async ({
+    page,
+    limit,
+  }: GetUserShowcaseArgs = {}) => {
     let query = '';
     if (page) {
       query = addToQuery(query, `page=${page}`);
@@ -958,7 +977,7 @@ export default class CargoApi {
     if (limit) {
       query = addToQuery(query, `limit=${limit}`);
     }
-    this.request<PaginationResponseWithResults<UserCrateV3>, any>(
+    return this.request<PaginationResponseWithResults<UserCrateV3>, any>(
       `/v3/get-user-crates${query}`,
       {
         headers: {

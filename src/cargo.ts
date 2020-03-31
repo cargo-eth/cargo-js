@@ -7,7 +7,7 @@ import packageJson from '../package.json';
 import Contract from 'web3/eth/contract';
 // @ts-ignore
 import BigNumber from 'bignumber.js';
-import Emitter from './events';
+import { Emitter } from './events';
 import CargoApi from './api';
 import PollTx from './pollTx';
 import Utils from './utils';
@@ -251,4 +251,4 @@ class Cargo extends Emitter {
   };
 }
 
-export default Cargo;
+export { Cargo };

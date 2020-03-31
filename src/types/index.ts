@@ -81,6 +81,8 @@ export type ContractV3 = {
   symbol: string;
   supportsMetadata: boolean;
   tags?: string[];
+  owned?: boolean;
+  totalOwned?: number;
   createdAt: string;
 };
 

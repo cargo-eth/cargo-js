@@ -1,6 +1,6 @@
-type EventCallback = (data: any, eventName: string) => any;
+export type EventCallback = (data: any, eventName: string) => any;
 
-export default class Emitter {
+export class Emitter {
   private listeners: {
     [property: string]: Set<EventCallback>;
   };

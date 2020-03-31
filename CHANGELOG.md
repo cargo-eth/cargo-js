@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contract ABIs are fetched as needed rather than upfront.
 - Contract ABIs are stored in localstorage to mitigate the need to request them from the server unnecessarily.
 - web3 has been added as a peer dependency
+- Cargo class is now a named import rather than default.
+- Emitter class in now a new named import.
 
 ## [2.2.2]
 

@@ -1,3 +1,3 @@
-import Cargo from './cargo';
+export * from './Cargo';
+export * from './events';
 export * from './types';
-export default Cargo;

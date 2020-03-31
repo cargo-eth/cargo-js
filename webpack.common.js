@@ -5,7 +5,6 @@ module.exports = {
     path: `${__dirname}/dist`,
     umdNamedDefine: true,
     library: 'Cargo',
-    libraryExport: 'default',
     libraryTarget: 'umd',
   },
   resolve: {
