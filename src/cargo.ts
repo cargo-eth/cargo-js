@@ -36,6 +36,7 @@ export type ContractNames =
   | 'cargoData'
   | 'cargoAsset'
   | 'cargoSell'
+  | 'cargoMintingCredits'
   | 'cargoVendor';
 
 type ContractObject = {
@@ -139,12 +140,6 @@ class Cargo extends Emitter {
     this.api = new CargoApi(this.requestUrl, this);
     this.pollTx = new PollTx(this);
 
-    if (this.provider) {
-      this.emit('has-provider-but-not-enabled');
-    } else {
-      this.emit('provider-required');
-    }
-
     this.initialized = true;
   }
 
@@ -155,14 +150,12 @@ class Cargo extends Emitter {
 
   private setUpWeb3 = () => {
     if (this.provider) {
-      this.providerRequired = false;
       const web3 = new Web3(this.provider);
       this.web3 = web3;
       window.web3 = web3;
       return true;
     } else {
       this.emit('provider-required');
-      this.providerRequired = true;
       return false;
     }
   };
@@ -206,9 +199,6 @@ class Cargo extends Emitter {
   contractInstanceCache: { [contract in ContractNames]?: typeof Contract } = {};
 
   public enable = async () => {
-    if (!this.initialized) {
-      throw new Error('Call cargo.init before calling enable.');
-    }
     if (this.enabled) return true;
     if (this.setUpWeb3()) {
       this.getContractInstance = async (
@@ -252,7 +242,7 @@ class Cargo extends Emitter {
 
         return true;
       } catch (e) {
-        this.emit('has-provider-but-not-enabled');
+        this.emit('enable-required');
         return false;
       }
     } else {

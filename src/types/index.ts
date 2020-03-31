@@ -127,3 +127,8 @@ export type TokenDetail = {
   contractName: string;
   contractSymbol: string;
 };
+
+export type GetUserShowcaseArgs = {
+  page?: string;
+  limit?: string;
+};

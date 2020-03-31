@@ -12,6 +12,7 @@ import {
   GetUserTokensByContractParams,
   ContractMetadata,
   TokenDetail,
+  GetUserShowcaseArgs,
 } from './types';
 
 const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
@@ -65,8 +66,6 @@ export default class CargoApi {
     this.accounts = accounts;
   };
 
-  // Methods that do not require metamask
-
   getSignature = (): Promise<string> => {
     if (window.sessionStorage.getItem('__CARGO_SIG__')) {
       return Promise.resolve(window.sessionStorage.getItem('__CARGO_SIG__'));
@@ -92,7 +91,7 @@ export default class CargoApi {
     if (!this.cargo.enabled) {
       await this.cargo.enable();
     }
-    if (this.cargo.providerRequired) {
+    if (!this.cargo.hasProvider) {
       throw new Error('Provider required');
     }
   };
@@ -230,7 +229,7 @@ export default class CargoApi {
     CargoApi['_bulkMetadataUpdate']
   >(this._bulkMetadataUpdate);
 
-  private _addContractToCreate = async (
+  private _addCollectionToShowcase = async (
     contractId: string,
     crateId: string,
     token: string,
@@ -248,10 +247,10 @@ export default class CargoApi {
     });
   };
 
-  public addContractToCrate = this.authenticatedMethod<
+  public addCollectionToShowcase = this.authenticatedMethod<
     [string, string],
-    CargoApi['_addContractToCreate']
-  >(this._addContractToCreate);
+    CargoApi['_addCollectionToShowcase']
+  >(this._addCollectionToShowcase);
 
   private _getUserTokensByContract = async (
     options: GetUserTokensByContractParams,
@@ -277,8 +276,8 @@ export default class CargoApi {
   >(this._getUserTokensByContract);
 
   getResaleItems = async (options: {
-    crateId?: string;
-    contractId?: string;
+    showcaseId?: string;
+    collectionId?: string;
     page?: string;
     limit?: string;
     owned?: string;
@@ -287,7 +286,7 @@ export default class CargoApi {
       'Content-Type': 'application/json',
     };
 
-    const { page, limit, crateId, contractId, owned } = options || {};
+    const { page, limit, showcaseId, collectionId, owned } = options || {};
 
     if (owned && !this.token) {
       throw new Error(
@@ -309,12 +308,12 @@ export default class CargoApi {
       query = addToQuery(query, `limit=${limit}`);
     }
 
-    if (contractId) {
-      query = addToQuery(query, `contractId=${contractId}`);
+    if (collectionId) {
+      query = addToQuery(query, `contractId=${collectionId}`);
     }
 
-    if (crateId) {
-      query = addToQuery(query, `crateId=${crateId}`);
+    if (showcaseId) {
+      query = addToQuery(query, `crateId=${showcaseId}`);
     }
 
     return this.request(`/v3/get-resale-items${query}`, {
@@ -323,9 +322,9 @@ export default class CargoApi {
   };
 
   getContracts = async (options: {
-    page: string;
-    limit: string;
-    crateId?: string;
+    page?: string;
+    limit?: string;
+    showcaseId?: string;
     owned?: boolean;
     useAuthToken?: boolean;
   }) => {
@@ -333,7 +332,7 @@ export default class CargoApi {
       'Content-Type': 'application/json',
     };
 
-    const { page, limit, crateId, owned } = options || {};
+    const { page, limit, showcaseId, owned } = options || {};
 
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
@@ -341,8 +340,8 @@ export default class CargoApi {
 
     let query = `?page=${page || '1'}&limit=${limit || '10'}`;
 
-    if (crateId) {
-      query += `&crateId=${crateId}`;
+    if (showcaseId) {
+      query += `&crateId=${showcaseId}`;
     }
 
     if (owned != null) {
@@ -363,8 +362,8 @@ export default class CargoApi {
     });
   };
 
-  private _createCrate = async (crateName: string) => {
-    const response = await this.request<{ crateId: string }, any>(
+  private _createShowcase = async (crateName: string) => {
+    const response = await this.request<{ showcaseId: string }, any>(
       '/v3/create-crate',
       {
         method: 'POST',
@@ -381,16 +380,12 @@ export default class CargoApi {
     return response;
   };
 
-  public createCrate = this.authenticatedMethod<
+  public createShowcase = this.authenticatedMethod<
     [string],
-    CargoApi['_createCrate']
-  >(this._createCrate);
-  /**
-   * ========================
-   * Methods that require metamask
-   * ========================
-   */
-  setCrateApplicationFee = this.providerMethod(
+    CargoApi['_createShowcase']
+  >(this._createShowcase);
+
+  setShowcaseApplicationFee = this.providerMethod(
     this.authenticatedMethod(async (fee: number, crateId: string) => {
       if (window.isNaN(fee)) {
         throw new Error(`${fee} is not a valid argument`);
@@ -428,22 +423,6 @@ export default class CargoApi {
       });
     }),
   );
-
-  private _getPurchasableBalances = async () => {
-    const cargoAsset = await this.cargo.getContractInstance('cargoAsset');
-    const total = await cargoAsset.methods.totalPurchasableBalances().call();
-    let p = [];
-    for (let i = 0; i < new this.cargo.BigNumber(total).toNumber(); i++) {
-      p.push(cargoAsset.methods.getPurchasableBalanceByIndex(i).call());
-    }
-    p = await Promise.all(p);
-    return p;
-  };
-
-  getPurchasableBalances = this.providerMethod<
-    [],
-    CargoApi['_getPurchasableBalances']
-  >(this._getPurchasableBalances);
 
   authenticate = this.providerMethod(async () => {
     const signature = await this.getSignature();
@@ -546,7 +525,7 @@ export default class CargoApi {
     this.authenticatedMethod(
       async (
         beneficiaryAddress: string,
-        commission: string,
+        commission: number,
         crateId: string,
       ) => {
         const response = await this.request<ArgsResponse, any>(
@@ -559,7 +538,7 @@ export default class CargoApi {
             },
             body: JSON.stringify({
               address: beneficiaryAddress,
-              commission,
+              commission: this.cargo.getCommission(commission),
               crateId,
             }),
           },
@@ -581,6 +560,14 @@ export default class CargoApi {
       },
     ),
   );
+
+  getMintingCreditBalance = this.providerMethod(async () => {
+    const contract = await this.cargo.getContractInstance(
+      'cargoMintingCredits',
+    );
+    const balance = await contract.methods.balanceOf(this.accounts[0]).call();
+    return balance;
+  });
 
   addVendor = this.providerMethod(
     this.authenticatedMethod(async (vendorAddress: string, crateId: string) => {
@@ -615,8 +602,12 @@ export default class CargoApi {
       async (
         crateId: string,
         beneficiaryAddress: string,
-        commission: string,
+        commission: number,
       ) => {
+        const isValidCommission = commission => 0 && commission <= 1;
+        if (!isValidCommission) {
+          throw new Error('Commission must be a number between 0 and 1');
+        }
         const response = await this.request<ArgsResponse, any>(
           '/v3/add-beneficiary',
           {
@@ -628,7 +619,7 @@ export default class CargoApi {
             body: JSON.stringify({
               crateId,
               address: beneficiaryAddress,
-              commission,
+              commission: this.cargo.getCommission(commission),
             }),
           },
         );
@@ -836,12 +827,17 @@ export default class CargoApi {
   );
 
   sell = this.providerMethod(
-    async (
-      contractAddress: string,
-      tokenId: string,
-      price: string,
-      crateId?: string,
-    ) => {
+    async ({
+      contractAddress,
+      tokenId,
+      price,
+      crateId,
+    }: {
+      contractAddress: string;
+      tokenId: string;
+      price: string;
+      crateId?: string;
+    }) => {
       const [sender] = this.cargo.accounts;
       const body: { [key: string]: string } = {
         sender,
@@ -937,7 +933,7 @@ export default class CargoApi {
     CargoApi['_getVendorBeneficiaries']
   >(this._getVendorBeneficiaries);
 
-  private _getCrateVendors = async (crateId: string) =>
+  private _getShowcaseVendors = async (crateId: string) =>
     this.request<PaginationResponseWithResults<CrateVendorV3>, any>(
       `/v3/get-crate-vendors/${crateId}`,
       {
@@ -948,25 +944,34 @@ export default class CargoApi {
       },
     );
 
-  public getCrateVendors = this.authenticatedMethod<
+  public getShowcaseVendors = this.authenticatedMethod<
     [string],
-    CargoApi['_getCrateVendors']
-  >(this._getCrateVendors);
+    CargoApi['_getShowcaseVendors']
+  >(this._getShowcaseVendors);
 
-  private _getUserCrates = async () =>
+  private _getUserShowcases = async ({ page, limit }: GetUserShowcaseArgs) => {
+    let query = '';
+    if (page) {
+      query = addToQuery(query, `page=${page}`);
+    }
+
+    if (limit) {
+      query = addToQuery(query, `limit=${limit}`);
+    }
     this.request<PaginationResponseWithResults<UserCrateV3>, any>(
-      `/v3/get-user-crates`,
+      `/v3/get-user-crates${query}`,
       {
         headers: {
           Authorization: `Bearer ${this.token}`,
         },
       },
     );
+  };
 
-  public getUserCrates = this.authenticatedMethod<
-    [],
-    CargoApi['_getUserCrates']
-  >(this._getUserCrates);
+  public getUserShowcases = this.authenticatedMethod<
+    [GetUserShowcaseArgs],
+    CargoApi['_getUserShowcases']
+  >(this._getUserShowcases);
 
   public getTokenDetails = async (contractAddress: string, tokenId: string) => {
     return this.request<TokenDetail, any>(
