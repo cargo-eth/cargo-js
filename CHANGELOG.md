@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - web3 has been added as a peer dependency
 - Cargo class is now a named import rather than default.
 - Emitter class in now a new named import.
+- Return new transaction hash in addition to all pending transactions in 'pending' pollTx event
+- Update PollTx event 'pendingUpdated' to 'pending'
+- Do not emit pending from completed event in PollTx.
+- Update PollTx completed event emit an addition argument which is the updated list of pending transactions.
 
 ## [2.2.2]
 

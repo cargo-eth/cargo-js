@@ -64,7 +64,7 @@ export default class PollTx extends Emitter {
       this.startWatching();
     }
     // An event which is emitted with the updated list of pending transactions
-    this.emit('pendingUpdated', this.pending);
+    this.emit('pending', tx, this.pending);
   }
 
   private internalWatch = async () => {
@@ -116,9 +116,7 @@ export default class PollTx extends Emitter {
     this.pending = this.pending.filter(t => t !== tx.hash);
     this.completed.push(tx.hash);
     // An even which is emitted upon a completed transaction
-    this.emit('completed', tx.hash);
-    // An even which is emitted that included the updated pending transactions
-    this.emit('pendingUpdated', this.pending);
+    this.emit('completed', tx.hash, this.pending);
     if (this.pending.length === 0) {
       this.watching = false;
     }
