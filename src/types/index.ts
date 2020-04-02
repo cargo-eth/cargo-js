@@ -134,3 +134,11 @@ export type GetUserShowcaseArgs = {
   page?: string;
   limit?: string;
 };
+
+export type GetShowcaseByIdResponse = {
+  name: string;
+  createdAt: string;
+  public: boolean;
+  isOwner?: boolean;
+  isVendor?: boolean;
+};

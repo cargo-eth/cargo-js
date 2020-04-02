@@ -14,6 +14,7 @@ import {
   TokenDetail,
   GetUserShowcaseArgs,
   ContractV3,
+  GetShowcaseByIdResponse,
 } from './types';
 
 const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
@@ -320,6 +321,20 @@ export default class CargoApi {
     return this.request(`/v3/get-resale-items${query}`, {
       headers,
     });
+  };
+
+  getShowcaseById = async (showcaseId: string, auth: boolean) => {
+    let headers;
+    if (auth) {
+      this.checkForToken();
+      headers = {
+        Authorization: `Bearer ${this.token}`,
+      };
+    }
+    return this.request<GetShowcaseByIdResponse, any>(
+      `/v3/get-crate-by-id/${showcaseId}`,
+      { headers },
+    );
   };
 
   getContracts = async (options: {
