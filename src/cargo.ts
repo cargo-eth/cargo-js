@@ -46,6 +46,25 @@ type ContractObject = {
   instance?: Contract;
 };
 
+export type TSuccessResponse<Data> = {
+  err: false;
+  status: number;
+  data?: Data;
+};
+export type TErrorResponse<Data> = {
+  status: number;
+  err: true;
+  errorData?: Data;
+};
+
+export type TResolvedResponse<Success, Error extends any> =
+  | TSuccessResponse<Success>
+  | TErrorResponse<Error>;
+
+export type TResp<Success, Error extends any> = Promise<
+  TResolvedResponse<Success, Error>
+>;
+
 const DEFAULT_OPTIONS: CargoOptions = {
   network: 'development',
 };
@@ -167,7 +186,7 @@ class Cargo extends Emitter {
     options?: {},
     isJson: boolean = true,
     rawUrl?: boolean,
-  ) =>
+  ): TResp<SuccessData, ErrorData> =>
     fetch(`${!rawUrl ? `${this.requestUrl}${path}` : path}`, {
       cache: 'no-cache',
       ...options,
@@ -178,19 +197,19 @@ class Cargo extends Emitter {
           return {
             err: false,
             status: res.status,
-            data: json as SuccessData,
-          };
+            data: json,
+          } as TSuccessResponse<SuccessData>;
         }
         return {
           status: res.status,
           err: true,
-          data: json as ErrorData,
-        };
+          errorData: json as ErrorData,
+        } as TErrorResponse<ErrorData>;
       } else if (res.ok) {
         return {
           err: false,
           status: res.status,
-        };
+        } as TSuccessResponse<undefined>;
       }
     });
 

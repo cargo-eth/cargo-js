@@ -1,4 +1,4 @@
-import Cargo, { Contracts, ContractNames } from './cargo';
+import { Cargo, Contracts, ContractNames, TResp } from './cargo';
 import {
   TokenAddress,
   TokenId,
@@ -323,7 +323,10 @@ export default class CargoApi {
     });
   };
 
-  getShowcaseById = async (showcaseId: string, auth: boolean) => {
+  getShowcaseById = async (
+    showcaseId: string,
+    auth: boolean,
+  ): TResp<GetShowcaseByIdResponse, any> => {
     let headers;
     if (auth) {
       this.checkForToken();
@@ -331,10 +334,7 @@ export default class CargoApi {
         Authorization: `Bearer ${this.token}`,
       };
     }
-    return this.request<GetShowcaseByIdResponse, any>(
-      `/v3/get-crate-by-id/${showcaseId}`,
-      { headers },
-    );
+    return this.request(`/v3/get-crate-by-id/${showcaseId}`, { headers });
   };
 
   getContracts = async (options: {
