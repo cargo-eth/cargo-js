@@ -234,13 +234,12 @@ export default class CargoApi {
   private _addCollectionToShowcase = async (
     contractId: string,
     crateId: string,
-    token: string,
   ) => {
     return this.request<ArgsResponse, any>('/v3/add-contract-to-crate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${this.token}`,
       },
       body: JSON.stringify({
         crateId,
@@ -1053,9 +1052,18 @@ export default class CargoApi {
     CargoApi['_getOrders']
   >(this._getOrders);
 
-  public getContractMetadata = async (contractAddress: string) => {
+  public getContractMetadata = async (
+    contractAddress: string,
+    useAuth?: boolean,
+  ) => {
+    const headers: { [key: string]: any } = {};
+    if (useAuth) {
+      this.checkForToken();
+      headers.Authorization = `Bearer ${this.token}`;
+    }
     return this.request<ContractMetadata, any>(
       `/v3/get-contract-metadata/${contractAddress}`,
+      { headers },
     );
   };
 }
