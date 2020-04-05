@@ -127,7 +127,9 @@ class Cargo extends Emitter {
     this.utils = new Utils();
     this.Web3 = Web3;
     this.provider =
-      window['ethereum'] || (window.web3 && window.web3.currentProvider);
+      options.provider ||
+      window['ethereum'] ||
+      (window.web3 && window.web3.currentProvider);
     this.hasProvider = !!this.provider;
 
     if (options) {
@@ -160,6 +162,12 @@ class Cargo extends Emitter {
     this.pollTx = new PollTx(this);
 
     this.initialized = true;
+  }
+
+  setProvider(provider: Provider) {
+    if (!provider) throw new Error('Provider must be provided');
+    this.provider = provider;
+    this.hasProvider = true;
   }
 
   private denominator = new BigNumber(1 * 10 ** 18);
@@ -237,7 +245,7 @@ class Cargo extends Emitter {
         return contractInstance;
       };
       try {
-        if (window.web3.currentProvider.isMetaMask) {
+        if (this.provider && this.provider.isMetaMask) {
           // @ts-ignore
           window.ethereum.on('accountsChanged', accounts => {
             this.accounts = accounts;
@@ -246,8 +254,8 @@ class Cargo extends Emitter {
           });
         }
 
-        if (window.ethereum && window.ethereum.enable) {
-          const accounts = await window.ethereum.enable();
+        if (this.provider && this.provider.enable) {
+          const accounts = await this.provider.enable();
           this.accounts = accounts || window.web3.eth.accounts;
         } else {
           this.accounts = window.web3.eth.accounts;

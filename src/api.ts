@@ -496,11 +496,13 @@ export default class CargoApi {
     return response;
   });
 
-  callTxAndPoll = (method: Function) => async (...args: any[]) => {
-    const tx = await method(...args);
-    this.cargo.pollTx.watch(tx);
-    return tx;
-  };
+  callTxAndPoll = (method: Function) => async (...args: any[]) =>
+    new Promise(resolve => {
+      method(...args).once('transactionHash', hash => {
+        this.cargo.pollTx.watch(hash);
+        resolve(hash);
+      });
+    });
 
   cancelSale = this.providerMethod(async (resaleItemId: string) => {
     const body: { [key: string]: string } = { resaleItemId };
