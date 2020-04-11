@@ -124,7 +124,7 @@ export type TokenDetail = {
   ownerAddress: string;
   resaleItem?: ResaleItemV3;
   tokenId: string;
-  metadata?: Object;
+  metadata?: { [key: string]: any };
   tokenURI: string;
   contractName: string;
   contractSymbol: string;
@@ -142,3 +142,15 @@ export type GetShowcaseByIdResponse = {
   isOwner?: boolean;
   isVendor?: boolean;
 };
+
+export type GetTokensByContractResponse = {
+  name: string;
+  symbol;
+  totalSupply: string;
+} & PaginationResponseWithResults<
+  {
+    tokenId: string;
+    tokenURI;
+    metadata: { [key: string]: any };
+  }[]
+>;

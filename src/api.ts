@@ -15,6 +15,7 @@ import {
   GetUserShowcaseArgs,
   ContractV3,
   GetShowcaseByIdResponse,
+  GetTokensByContractResponse,
 } from './types';
 
 const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
@@ -1033,9 +1034,10 @@ export default class CargoApi {
       query = addToQuery(query, `limit=${limit}`);
     }
 
-    return this.request<PaginationResponseWithResults<Object>, any>(
-      `/v3/get-tokens-by-contract/${contractAddress}${query}`,
-    );
+    return this.request<
+      PaginationResponseWithResults<GetTokensByContractResponse>,
+      any
+    >(`/v3/get-tokens-by-contract/${contractAddress}${query}`);
   };
 
   private _getOrders = async (options: GetOrderParams) => {
