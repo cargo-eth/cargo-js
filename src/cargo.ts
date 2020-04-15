@@ -123,6 +123,10 @@ class Cargo extends Emitter {
 
   constructor(options?: CargoOptions) {
     super();
+    this.options = {
+      ...DEFAULT_OPTIONS,
+      ...options,
+    };
     this.BigNumber = BigNumber;
     this.utils = new Utils();
     this.Web3 = Web3;
@@ -144,11 +148,6 @@ class Cargo extends Emitter {
       });
     }
 
-    this.options = {
-      ...DEFAULT_OPTIONS,
-      ...options,
-    };
-
     this.requestUrl = REQUEST_URLS[this.options.network];
 
     this.getContract = getContractAbi(this.requestUrl);
@@ -168,6 +167,7 @@ class Cargo extends Emitter {
     if (!provider) throw new Error('Provider must be provided');
     this.provider = provider;
     this.hasProvider = true;
+    this.setUpWeb3();
   }
 
   private denominator = new BigNumber(1 * 10 ** 18);

@@ -106,6 +106,10 @@ export type ContractMetadata = {
   supportsMetadata: boolean;
   tags: string[];
   createdAt: string;
+  isOwned?: boolean;
+  owner?: string;
+  totalSupply: string;
+  _id: string;
 };
 
 export type ResaleItemV3 = {

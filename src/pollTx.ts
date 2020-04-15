@@ -1,6 +1,6 @@
 // @ts-ignore
 import Web3 from 'web3';
-import Cargo from './cargo';
+import { Cargo } from './cargo';
 
 type EventCallback = (...args: any[]) => void;
 

@@ -65,6 +65,15 @@ export default class CargoApi {
     this.token = localStorage.getItem(CARGO_LOCAL_STORAGE_TOKEN);
   }
 
+  clear = () => {
+    if (window.localStorage) {
+      localStorage.removeItem(CARGO_LOCAL_STORAGE_TOKEN);
+    }
+    if (window.sessionStorage) {
+      sessionStorage.removeItem('__CARGO_SIG__');
+    }
+  };
+
   setAccounts = (accounts: Array<string>) => {
     this.accounts = accounts;
   };
@@ -198,11 +207,58 @@ export default class CargoApi {
     }
   };
 
-  /**
-   * ========================
-   * Methods that do not require metamask
-   * ========================
-   */
+  public isUnlockable = async (
+    contractAddress: string,
+    collectibleId: string,
+  ) => {
+    return this.request<{ unlockable: boolean }, any>('/v3/unlockable', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contractAddress,
+        tokenId: collectibleId,
+      }),
+    });
+  };
+
+  public download = this.providerMethod(
+    async (contractAddress: string, tokenId: string) => {
+      const message = `${contractAddress}:${tokenId}`;
+
+      const p = () =>
+        new Promise((resolve, reject) => {
+          this.cargo.web3.eth.personal.sign(
+            message,
+            this.accounts[0],
+            // @ts-ignore
+            (err: Error, result: any) => {
+              if (err) return reject(new Error(err.message));
+              if (result.error) {
+                return reject(new Error(result.error.message));
+              }
+              resolve(result);
+            },
+          );
+        });
+
+      const signature = await p();
+
+      return this.request<{ url: string }, any>('/v3/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          signature,
+          tokenId,
+          contractAddress,
+        }),
+      });
+    },
+  );
+
   private _bulkMetadataUpdate = async (
     contractAddress: string,
     metadata: {
@@ -815,6 +871,31 @@ export default class CargoApi {
           : contract.methods.batchMint(amount, to, ...args);
 
       return this.callTxAndPoll(method.send)({ from: this.cargo.accounts[0] });
+    },
+  );
+
+  transferCollectible = this.providerMethod(
+    async (contractAddress: string, tokenId: string, to: string) => {
+      const contract = await this.cargo.getContractInstance(
+        'cargoNft',
+        contractAddress,
+      );
+      return this.callTxAndPoll(
+        contract.methods.safeTransferFrom(this.cargo.accounts[0], to, tokenId)
+          .send,
+      )({ from: this.cargo.accounts[0] });
+    },
+  );
+
+  burnCollectible = this.providerMethod(
+    async (contractAddress: string, tokenId: string) => {
+      const contract = await this.cargo.getContractInstance(
+        'cargoNft',
+        contractAddress,
+      );
+      return this.callTxAndPoll(contract.methods.burn(tokenId).send)({
+        from: this.cargo.accounts[0],
+      });
     },
   );
 
