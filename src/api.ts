@@ -984,6 +984,27 @@ export default class CargoApi {
     },
   );
 
+  modifyShowcase = this.authenticatedMethod(
+    async (showcaseId: string, isPublic: boolean) => {
+      return this.request<
+        {
+          _id: string;
+          name: string;
+          owner: string;
+          public: boolean;
+        },
+        any
+      >(`/v3/modify-showcase/${showcaseId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({ public: isPublic }),
+      });
+    },
+  );
+
   removeVendor = this.providerMethod(
     this.authenticatedMethod(async (vendorAddress: string, crateId: string) => {
       const response = await this.request<ArgsResponse, any>(
