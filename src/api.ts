@@ -552,12 +552,16 @@ export default class CargoApi {
     return response;
   });
 
-  callTxAndPoll = (method: Function) => async (...args: any[]) =>
-    new Promise(resolve => {
-      method(...args).once('transactionHash', hash => {
-        this.cargo.pollTx.watch(hash);
-        resolve(hash);
-      });
+  callTxAndPoll = (method: Function) => (...args: any[]) =>
+    new Promise((resolve, reject) => {
+      method(...args)
+        .once('transactionHash', hash => {
+          this.cargo.pollTx.watch(hash);
+          resolve(hash);
+        })
+        .once('error', e => {
+          reject(e);
+        });
     });
 
   cancelSale = this.providerMethod(async (resaleItemId: string) => {
@@ -921,7 +925,10 @@ export default class CargoApi {
 
       const contract = await this.cargo.getContractInstance('cargoSell');
 
-      return this.callTxAndPoll(contract.methods.purchase(...args).send)({
+      const method =
+        args[3] && args[3].length === 4 ? 'purchaseInCrate' : 'purchase';
+
+      return this.callTxAndPoll(contract.methods[method](...args).send)({
         from: this.cargo.accounts[0],
         value: price,
       });
@@ -1159,14 +1166,22 @@ export default class CargoApi {
   public getContractMetadata = async (
     contractAddress: string,
     useAuth?: boolean,
+    slug?: string,
+    slugId?: string,
   ) => {
     const headers: { [key: string]: any } = {};
-    if (useAuth) {
-      this.checkForToken();
+    if (useAuth && this.token) {
       headers.Authorization = `Bearer ${this.token}`;
     }
+    let query = '';
+    if (slug) {
+      query = addToQuery(query, `slug=${slug}`);
+    }
+    if (slugId) {
+      query = addToQuery(query, `slugId=${slugId}`);
+    }
     return this.request<ContractMetadata, any>(
-      `/v3/get-contract-metadata/${contractAddress}`,
+      `/v3/get-contract-metadata/${contractAddress}${query}`,
       { headers },
     );
   };

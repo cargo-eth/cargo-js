@@ -241,7 +241,9 @@ class Cargo extends Emitter {
           abi,
           address || setAddress,
         );
-        this.contractInstanceCache[contract] = contractInstance;
+        if (contract !== 'cargoNft') {
+          this.contractInstanceCache[contract] = contractInstance;
+        }
         return contractInstance;
       };
       try {
