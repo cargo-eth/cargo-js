@@ -223,7 +223,9 @@ class Cargo extends Emitter {
 
   enabled: boolean = false;
 
-  contractInstanceCache: { [contract in ContractNames]?: typeof Contract } = {};
+  contractInstanceCache: {
+    [requestUrl: string]: { [contract in ContractNames]?: typeof Contract };
+  } = {};
 
   public enable = async () => {
     if (this.enabled) return true;
@@ -232,8 +234,8 @@ class Cargo extends Emitter {
         contract: ContractNames,
         setAddress?: string,
       ) => {
-        if (this.contractInstanceCache[contract]) {
-          return this.contractInstanceCache[contract];
+        if (this.contractInstanceCache[this.requestUrl][contract]) {
+          return this.contractInstanceCache[this.requestUrl][contract];
         }
         const { abi, address } = await this.getContract(contract);
         const contractInstance = new this.web3.eth.Contract(
@@ -242,7 +244,9 @@ class Cargo extends Emitter {
           address || setAddress,
         );
         if (contract !== 'cargoNft') {
-          this.contractInstanceCache[contract] = contractInstance;
+          this.contractInstanceCache[this.requestUrl][
+            contract
+          ] = contractInstance;
         }
         return contractInstance;
       };
