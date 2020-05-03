@@ -650,6 +650,19 @@ export default class CargoApi {
     return balance;
   });
 
+  purchaseCreditPack = this.providerMethod(
+    async (pack: string, price: string) => {
+      const contract = await this.cargo.getContractInstance(
+        'cargoMintingCredits',
+      );
+
+      return this.callTxAndPoll(contract.methods.purchaseBalance(pack).send)({
+        from: this.cargo.accounts[0],
+        value: price,
+      });
+    },
+  );
+
   addVendor = this.providerMethod(
     this.authenticatedMethod(async (vendorAddress: string, crateId: string) => {
       const response = await this.request<ArgsResponse, any>('/v3/add-vendor', {

@@ -1,6 +1,6 @@
 {
   "name": "@cargo-eth/js",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "main": "./dist/main.js",
   "types": "./dist/main.d.ts",
   "repository": {
@@ -62,7 +62,8 @@
     "test": "jest",
     "test:types": "tsc --skipLibCheck",
     "pretest": "npm run build",
-    "prepublishOnly": "yarn run test && yarn run build"
+    "build:module": "rm -r ./dist; yarn build:types && NODE_ENV=production yarn webpack --config ./webpack.prod.js",
+    "prepublishOnly": "yarn run build:module"
   },
   "files": [
     "dist"

@@ -234,20 +234,12 @@ class Cargo extends Emitter {
         contract: ContractNames,
         setAddress?: string,
       ) => {
-        if (this.contractInstanceCache[this.requestUrl][contract]) {
-          return this.contractInstanceCache[this.requestUrl][contract];
-        }
         const { abi, address } = await this.getContract(contract);
         const contractInstance = new this.web3.eth.Contract(
           // @ts-ignore
           abi,
           address || setAddress,
         );
-        if (contract !== 'cargoNft') {
-          this.contractInstanceCache[this.requestUrl][
-            contract
-          ] = contractInstance;
-        }
         return contractInstance;
       };
       try {
