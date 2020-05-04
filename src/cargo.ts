@@ -131,7 +131,7 @@ class Cargo extends Emitter {
     this.utils = new Utils();
     this.Web3 = Web3;
     this.provider =
-      options?.provider ||
+      (options && options.provider) ||
       window['ethereum'] ||
       (window.web3 && window.web3.currentProvider);
     this.hasProvider = !!this.provider;
