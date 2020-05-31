@@ -256,7 +256,7 @@ class Cargo extends Emitter {
           const accounts = await this.provider.enable();
           this.accounts = accounts || window.web3.eth.accounts;
         } else {
-          this.accounts = window.web3.eth.accounts;
+          this.accounts = (window.web3.eth.accounts as unknown) as string[];
         }
         if (!this.accounts) {
           throw new Error('Accounts is undefined. User cancelled');

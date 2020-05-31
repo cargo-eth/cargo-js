@@ -16,7 +16,9 @@ import {
   ContractV3,
   GetShowcaseByIdResponse,
   GetTokensByContractResponse,
+  ShowcaseId,
 } from './types';
+import { Order, OrderParams } from './types/Order';
 
 const CARGO_LOCAL_STORAGE_TOKEN = '__CARGO_LS_TOKEN_AUTH__';
 
@@ -43,6 +45,10 @@ type MintParams = {
   metadata?: Object;
   previewImage?: File;
   files?: File[];
+  displayContent?: {
+    type: 'audio' | 'video' | '3D';
+    files: File[];
+  };
 };
 
 export default class CargoApi {
@@ -68,9 +74,7 @@ export default class CargoApi {
   clear = () => {
     if (window.localStorage) {
       localStorage.removeItem(CARGO_LOCAL_STORAGE_TOKEN);
-    }
-    if (window.sessionStorage) {
-      sessionStorage.removeItem('__CARGO_SIG__');
+      localStorage.removeItem('__CARGO_SIG__');
     }
   };
 
@@ -79,8 +83,8 @@ export default class CargoApi {
   };
 
   getSignature = (): Promise<string> => {
-    if (window.sessionStorage.getItem('__CARGO_SIG__')) {
-      return Promise.resolve(window.sessionStorage.getItem('__CARGO_SIG__'));
+    if (window.localStorage.getItem('__CARGO_SIG__')) {
+      return Promise.resolve(window.localStorage.getItem('__CARGO_SIG__'));
     }
     return new Promise((resolve, reject) => {
       this.cargo.web3.eth.personal.sign(
@@ -92,7 +96,7 @@ export default class CargoApi {
           if (result.error) {
             return reject(new Error(result.error.message));
           }
-          window.sessionStorage.setItem('__CARGO_SIG__', result);
+          window.localStorage.setItem('__CARGO_SIG__', result);
           resolve(result);
         },
       );
@@ -460,6 +464,16 @@ export default class CargoApi {
     CargoApi['_createShowcase']
   >(this._createShowcase);
 
+  private _getShowcaseApplicationFee = async (showcaseId: string) => {
+    const cargoData = await this.cargo.getContractInstance('cargoData');
+    return cargoData.methods.crateApplicationFee(showcaseId).call();
+  };
+
+  getShowcaseApplicationFee = this.providerMethod<
+    [ShowcaseId],
+    CargoApi['_getShowcaseApplicationFee']
+  >(this._getShowcaseApplicationFee);
+
   setShowcaseApplicationFee = this.providerMethod(
     this.authenticatedMethod(async (fee: number, crateId: string) => {
       if (window.isNaN(fee)) {
@@ -483,7 +497,7 @@ export default class CargoApi {
         },
       );
 
-      if (response.err) {
+      if (response.err === true) {
         throw new Error(JSON.stringify(response));
       }
 
@@ -516,7 +530,7 @@ export default class CargoApi {
       },
     );
 
-    if (response.status === 200) {
+    if (response.status === 200 && response.err === false) {
       const { token } = response.data;
       this.token = token;
       localStorage.setItem(CARGO_LOCAL_STORAGE_TOKEN, token);
@@ -544,7 +558,7 @@ export default class CargoApi {
       },
     );
 
-    if (response.status === 200) {
+    if (response.err === false) {
       const { token } = response.data;
       this.token = token;
       localStorage.setItem(CARGO_LOCAL_STORAGE_TOKEN, token);
@@ -578,7 +592,7 @@ export default class CargoApi {
     }
 
     const response = await this.request<
-      ArgsResponse & { signaturesGenerated?: boolean },
+      ArgsResponse & { signatureGenerated?: boolean },
       any
     >('/v3/cancel-sale', {
       method: 'POST',
@@ -586,7 +600,7 @@ export default class CargoApi {
       body: JSON.stringify(body),
     });
 
-    if (response.err) {
+    if (response.err === true) {
       throw new Error(JSON.stringify(response));
     }
 
@@ -625,7 +639,7 @@ export default class CargoApi {
           },
         );
 
-        if (response.err) {
+        if (response.err === true) {
           throw new Error(JSON.stringify(response));
         }
 
@@ -677,7 +691,7 @@ export default class CargoApi {
         }),
       });
 
-      if (response.err) {
+      if (response.err === true) {
         throw new Error(JSON.stringify(response));
       }
 
@@ -718,7 +732,7 @@ export default class CargoApi {
           },
         );
 
-        if (response.err) {
+        if (response.err === true) {
           throw new Error(JSON.stringify(response));
         }
 
@@ -753,7 +767,7 @@ export default class CargoApi {
           },
         );
 
-        if (response.err) {
+        if (response.err === true) {
           throw new Error(JSON.stringify(response));
         }
 
@@ -795,7 +809,7 @@ export default class CargoApi {
       },
     );
 
-    if (response.err) {
+    if (response.err === true) {
       throw new Error(JSON.stringify(response));
     }
 
@@ -815,6 +829,22 @@ export default class CargoApi {
     });
   };
 
+  _orders = async (options?: OrderParams) => {
+    return this.request<PaginationResponseWithResults<Order[]>, any>(
+      `/v3/get-orders${options ? getQuery(options) : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
+      },
+    );
+  };
+
+  public orders = this.authenticatedMethod<[OrderParams], CargoApi['_orders']>(
+    this._orders,
+  );
+
   public createContract = this.providerMethod<
     [string, string?, string?],
     CargoApi['_createContract']
@@ -830,6 +860,7 @@ export default class CargoApi {
       metadata,
       previewImage,
       files,
+      displayContent,
     }: MintParams) => {
       this.checkForToken();
       const cargoData = await this.cargo.getContractInstance('cargoData');
@@ -856,6 +887,12 @@ export default class CargoApi {
       if (previewImage) {
         formData.append('previewImage', previewImage);
       }
+      if (displayContent) {
+        formData.append('displayContentType', displayContent.type);
+        displayContent.files.forEach(file => {
+          formData.append('displayContent', file);
+        });
+      }
       if (Array.isArray(files)) {
         files.forEach(file => {
           formData.append('file', file);
@@ -870,7 +907,7 @@ export default class CargoApi {
         body: formData,
       });
 
-      if (response.err) {
+      if (response.err === true) {
         throw new Error(JSON.stringify(response));
       }
 
@@ -918,7 +955,10 @@ export default class CargoApi {
 
   purchase = this.providerMethod(
     async (tokenId: string, contractAddress: string) => {
-      const response = await this.request<ArgsResponse, any>('/v3/purchase', {
+      const response = await this.request<
+        ArgsResponse & { price: string },
+        any
+      >('/v3/purchase', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -930,7 +970,7 @@ export default class CargoApi {
         }),
       });
 
-      if (response.err) {
+      if (response.err === true) {
         throw new Error(JSON.stringify(response));
       }
 
@@ -1005,7 +1045,10 @@ export default class CargoApi {
   );
 
   modifyShowcase = this.authenticatedMethod(
-    async (showcaseId: string, isPublic: boolean) => {
+    async (
+      showcaseId: string,
+      update: { isPublic?: boolean; resellingEnabled?: boolean },
+    ) => {
       return this.request<
         {
           _id: string;
@@ -1020,7 +1063,7 @@ export default class CargoApi {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.token}`,
         },
-        body: JSON.stringify({ public: isPublic }),
+        body: JSON.stringify(update),
       });
     },
   );
@@ -1042,7 +1085,7 @@ export default class CargoApi {
         },
       );
 
-      if (response.err) {
+      if (response.err === true) {
         throw new Error(JSON.stringify(response));
       }
 

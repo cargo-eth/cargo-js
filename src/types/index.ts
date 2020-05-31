@@ -112,6 +112,8 @@ export type ContractMetadata = {
   _id: string;
 };
 
+export type ShowcaseId = string;
+
 export type ResaleItemV3 = {
   seller: string;
   contract: string;
@@ -143,6 +145,7 @@ export type GetShowcaseByIdResponse = {
   name: string;
   createdAt: string;
   public: boolean;
+  resellingEnabled: boolean;
   isOwner?: boolean;
   isVendor?: boolean;
 };
