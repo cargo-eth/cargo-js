@@ -466,7 +466,9 @@ export default class CargoApi {
 
   private _getShowcaseApplicationFee = async (showcaseId: string) => {
     const cargoData = await this.cargo.getContractInstance('cargoData');
-    return cargoData.methods.crateApplicationFee(showcaseId).call();
+    return cargoData.methods
+      .crateApplicationFee(this.cargo.web3.utils.utf8ToHex(showcaseId))
+      .call();
   };
 
   getShowcaseApplicationFee = this.providerMethod<

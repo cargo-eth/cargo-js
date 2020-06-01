@@ -146,6 +146,8 @@ export type GetShowcaseByIdResponse = {
   createdAt: string;
   public: boolean;
   resellingEnabled: boolean;
+  slug: string;
+  slugId: string;
   isOwner?: boolean;
   isVendor?: boolean;
 };
