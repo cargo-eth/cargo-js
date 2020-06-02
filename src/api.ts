@@ -1046,10 +1046,19 @@ export default class CargoApi {
     },
   );
 
+  deleteShowcase = this.authenticatedMethod(async (showcaseId?: string) => {
+    return this.request<{ code: 'success' }, any>(
+      `/v3/delete-showcase?showcaseId=${showcaseId}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  });
+
   modifyShowcase = this.authenticatedMethod(
     async (
       showcaseId: string,
-      update: { isPublic?: boolean; resellingEnabled?: boolean },
+      update: { isPublic?: boolean; resellingEnabled?: boolean; name?: string },
     ) => {
       return this.request<
         {
