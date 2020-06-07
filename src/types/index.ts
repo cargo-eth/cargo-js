@@ -123,6 +123,7 @@ export type ResaleItemV3 = {
   groupId: string;
   crate?: string;
   createdAt: string;
+  metadata?: { [key: string]: any };
 };
 
 export type TokenDetail = {
@@ -150,6 +151,7 @@ export type GetShowcaseByIdResponse = {
   slugId: string;
   isOwner?: boolean;
   isVendor?: boolean;
+  owner: { displayUsername: string; address: string };
 };
 
 export type GetTokensByContractResponse = {

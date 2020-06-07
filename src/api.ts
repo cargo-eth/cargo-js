@@ -343,12 +343,16 @@ export default class CargoApi {
     page?: string;
     limit?: string;
     owned?: string;
+    // If slug is present slug id is required
+    slug?: string;
+    slugId?: string;
   }) => {
     const headers: { [key: string]: string } = {
       'Content-Type': 'application/json',
     };
 
-    const { page, limit, showcaseId, collectionId, owned } = options || {};
+    const { page, limit, showcaseId, collectionId, owned, slug, slugId } =
+      options || {};
 
     if (owned && !this.token) {
       throw new Error(
@@ -378,9 +382,20 @@ export default class CargoApi {
       query = addToQuery(query, `crateId=${showcaseId}`);
     }
 
+    if (slug && slugId) {
+      query = addToQuery(query, `slug=${slug}&slugId=${slugId}`);
+    }
+
     return this.request(`/v3/get-resale-items${query}`, {
       headers,
     });
+  };
+
+  getShowcaseBySlug = async (
+    slug: string,
+    slugId: string,
+  ): TResp<GetShowcaseByIdResponse, any> => {
+    return this.request(`/v3/get-crate-by-id/${slug}?slugId=${slugId}`);
   };
 
   getShowcaseById = async (
@@ -1051,6 +1066,9 @@ export default class CargoApi {
       `/v3/delete-showcase?showcaseId=${showcaseId}`,
       {
         method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
       },
     );
   });
