@@ -1006,17 +1006,20 @@ export default class CargoApi {
   );
 
   sell = this.providerMethod(
-    async ({
-      contractAddress,
-      tokenId,
-      price,
-      crateId,
-    }: {
-      contractAddress: string;
-      tokenId: string;
-      price: string;
-      crateId?: string;
-    }) => {
+    async (
+      {
+        contractAddress,
+        tokenId,
+        price,
+        crateId,
+      }: {
+        contractAddress: string;
+        tokenId: string;
+        price: string;
+        crateId?: string;
+      },
+      unapprovedFn?: () => void,
+    ) => {
       const [sender] = this.cargo.accounts;
       const body: { [key: string]: string } = {
         sender,
@@ -1039,6 +1042,9 @@ export default class CargoApi {
         .call();
 
       if (!isApproved) {
+        if (unapprovedFn) {
+          unapprovedFn();
+        }
         await contract.methods.setApprovalForAll(cargoSellAddress, true).send({
           from: this.accounts[0],
         });
