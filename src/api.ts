@@ -1217,10 +1217,12 @@ export default class CargoApi {
 
   public getTokensByContract = async ({
     contractAddress,
+    ownerAddress,
     page,
     limit,
   }: {
     contractAddress: string;
+    ownerAddress?: string;
     page?: string;
     limit?: string;
   }) => {
@@ -1232,6 +1234,10 @@ export default class CargoApi {
 
     if (limit) {
       query = addToQuery(query, `limit=${limit}`);
+    }
+
+    if (ownerAddress) {
+      query = addToQuery(query, `ownerAddress=${ownerAddress}`);
     }
 
     return this.request<
