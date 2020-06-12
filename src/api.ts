@@ -1260,12 +1260,17 @@ export default class CargoApi {
     CargoApi['_getOrders']
   >(this._getOrders);
 
-  public getContractMetadata = async (
-    contractAddress: string,
-    useAuth?: boolean,
-    slug?: string,
-    slugId?: string,
-  ) => {
+  public getContractMetadata = async ({
+    contractAddress,
+    useAuth,
+    slug,
+    slugId,
+  }: {
+    contractAddress: string;
+    useAuth?: boolean;
+    slug?: string;
+    slugId?: string;
+  }) => {
     const headers: { [key: string]: any } = {};
     if (useAuth && this.token) {
       headers.Authorization = `Bearer ${this.token}`;
