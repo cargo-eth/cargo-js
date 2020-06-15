@@ -74,7 +74,7 @@ export default class CargoApi {
   clear = () => {
     if (window.localStorage) {
       localStorage.removeItem(CARGO_LOCAL_STORAGE_TOKEN);
-      localStorage.removeItem('__CARGO_SIG__');
+      localStorage.removeItem(`__CARGO_SIG__${this.cargo.accounts[0]}`);
     }
   };
 
@@ -83,8 +83,10 @@ export default class CargoApi {
   };
 
   getSignature = (): Promise<string> => {
-    if (window.localStorage.getItem('__CARGO_SIG__')) {
-      return Promise.resolve(window.localStorage.getItem('__CARGO_SIG__'));
+    if (window.localStorage.getItem(`__CARGO_SIG__${this.cargo.accounts[0]}`)) {
+      return Promise.resolve(
+        window.localStorage.getItem(`__CARGO_SIG__${this.cargo.accounts[0]}`),
+      );
     }
     return new Promise((resolve, reject) => {
       this.cargo.web3.eth.personal.sign(
@@ -96,7 +98,10 @@ export default class CargoApi {
           if (result.error) {
             return reject(new Error(result.error.message));
           }
-          window.localStorage.setItem('__CARGO_SIG__', result);
+          window.localStorage.setItem(
+            `__CARGO_SIG__${this.cargo.accounts[0]}`,
+            result,
+          );
           resolve(result);
         },
       );
@@ -550,7 +555,7 @@ export default class CargoApi {
     if (response.status === 200 && response.err === false) {
       const { token } = response.data;
       this.token = token;
-      localStorage.setItem(CARGO_LOCAL_STORAGE_TOKEN, token);
+      // localStorage.setItem(CARGO_LOCAL_STORAGE_TOKEN, token);
     }
 
     return response;
