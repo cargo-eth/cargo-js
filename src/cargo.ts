@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-ignore
 import Web3 from 'web3';
 // @ts-ignore
@@ -5,7 +6,7 @@ import { Provider } from 'web3/providers';
 import packageJson from '../package.json';
 // @ts-ignore
 import Contract from 'web3/eth/contract';
-// @ts-ignore
+
 import BigNumber from 'bignumber.js';
 import { Emitter } from './events';
 import CargoApi from './api';
@@ -17,7 +18,7 @@ export type TNetwork = 'local' | 'development' | 'production';
 
 type CargoOptions = {
   network: TNetwork;
-  provider?: Object;
+  provider?: Record<string, unknown>;
 };
 
 const validOptionKeys: (keyof CargoOptions)[] = ['network', 'provider'];
@@ -26,7 +27,7 @@ declare global {
   interface Window {
     ethereum?: Provider & { enable: () => Array<string> };
     web3?: Web3;
-    isNaN: Function;
+    isNaN: (any) => boolean;
   }
 }
 
@@ -41,7 +42,7 @@ export type ContractNames =
 
 type ContractObject = {
   name: ContractNames;
-  abi: Array<Object>;
+  abi: Array<Record<string, unknown>>;
   address?: string;
   instance?: Contract;
 };
@@ -194,8 +195,8 @@ class Cargo extends Emitter {
 
   request = <SuccessData, ErrorData>(
     path: string,
-    options?: {},
-    isJson: boolean = true,
+    options?: Record<string, unknown>,
+    isJson = true,
     rawUrl?: boolean,
   ): TResp<SuccessData, ErrorData> =>
     fetch(`${!rawUrl ? `${this.requestUrl}${path}` : path}`, {
@@ -224,7 +225,7 @@ class Cargo extends Emitter {
       }
     });
 
-  enabled: boolean = false;
+  enabled = false;
 
   contractInstanceCache: {
     [requestUrl: string]: { [contract in ContractNames]?: typeof Contract };

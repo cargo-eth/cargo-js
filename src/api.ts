@@ -1,9 +1,8 @@
-import { Cargo, Contracts, ContractNames, TResp } from './cargo';
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/ban-types */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+import { Cargo, Contracts, TResp } from './cargo';
 import {
-  TokenAddress,
-  TokenId,
-  ContractResaleItemsResponse,
-  ContractGroupBase,
   PaginationResponseWithResults,
   VendorBeneficiaryV3,
   CrateVendorV3,
@@ -17,6 +16,9 @@ import {
   GetShowcaseByIdResponse,
   GetTokensByContractResponse,
   ShowcaseId,
+  CreateConsecutiveSaleParams,
+  ConsecutivePurchaseParams,
+  ConsecutivePurchaseReturn,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -42,7 +44,7 @@ type MintParams = {
   to: string;
   name?: string;
   description?: string;
-  metadata?: Object;
+  metadata?: Record<string, unknown>;
   previewImage?: File;
   files?: File[];
   displayContent?: {
@@ -71,14 +73,14 @@ export default class CargoApi {
     this.token = localStorage.getItem(CARGO_LOCAL_STORAGE_TOKEN);
   }
 
-  clear = () => {
+  clear = (): void => {
     if (window.localStorage) {
       localStorage.removeItem(CARGO_LOCAL_STORAGE_TOKEN);
       localStorage.removeItem(`__CARGO_SIG__${this.cargo.accounts[0]}`);
     }
   };
 
-  setAccounts = (accounts: Array<string>) => {
+  setAccounts = (accounts: Array<string>): void => {
     this.accounts = accounts;
   };
 
@@ -124,7 +126,7 @@ export default class CargoApi {
     return fn(...args);
   };
 
-  private sendTx = (options: Object) =>
+  private sendTx = (options: Record<string, unknown>) =>
     new Promise((resolve, reject) => {
       this.cargo.web3.eth.sendTransaction(options, (err: Error, tx: string) => {
         console.log(err);
@@ -483,6 +485,88 @@ export default class CargoApi {
     [string],
     CargoApi['_createShowcase']
   >(this._createShowcase);
+
+  private _LAB_createConsecutiveSale = async (
+    params: CreateConsecutiveSaleParams,
+    unapprovedFn?: () => void,
+  ) => {
+    const { address: cargoSellAddress } = await this.cargo.getContract(
+      'cargoSell',
+    );
+    const contract = await this.cargo.getContractInstance(
+      'cargoNft',
+      params.contractAddress,
+    );
+
+    const isApproved = await contract.methods
+      .isApprovedForAll(this.accounts[0], cargoSellAddress)
+      .call();
+
+    if (!isApproved) {
+      if (unapprovedFn) {
+        unapprovedFn();
+      }
+      await contract.methods.setApprovalForAll(cargoSellAddress, true).send({
+        from: this.accounts[0],
+      });
+    }
+
+    return this.request<
+      {
+        _id: string;
+        seller: string;
+        contract: string;
+        pricePerItem: string;
+        toTokenId: string;
+        balance: string;
+        crate: string;
+      },
+      any
+    >('/v3/create-consecutive-sale', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: JSON.stringify(params),
+    });
+  };
+
+  LAB_createConsecutiveSale = this.providerMethod<
+    [CreateConsecutiveSaleParams, () => void],
+    CargoApi['_LAB_createConsecutiveSale']
+  >(this.authenticatedMethod(this._LAB_createConsecutiveSale));
+
+  private _LAB_consecutivePurchase = async (
+    params: ConsecutivePurchaseParams,
+  ) => {
+    const response = await this.request<ConsecutivePurchaseReturn, any>(
+      `/v3/consecutive-purchase`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params),
+      },
+    );
+
+    if (response.err === false) {
+      const contract = await this.cargo.getContractInstance('cargoSell');
+      const args = response.data.slice(0, response.data.length - 1);
+      const sendParams = response.data[response.data.length - 1];
+      return this.callTxAndPoll(
+        contract.methods.consecutivePurchaseInCrate(...args).send,
+      )(sendParams);
+    } else {
+      throw new Error(JSON.stringify(response.errorData));
+    }
+  };
+
+  LAB_consecutivePurchase = this.providerMethod<
+    [ConsecutivePurchaseParams],
+    CargoApi['_LAB_consecutivePurchase']
+  >(this._LAB_consecutivePurchase);
 
   private _getShowcaseApplicationFee = async (showcaseId: string) => {
     const cargoData = await this.cargo.getContractInstance('cargoData');

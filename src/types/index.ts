@@ -165,3 +165,39 @@ export type GetTokensByContractResponse = {
     metadata: { [key: string]: any };
   }[]
 >;
+
+export type CreateConsecutiveSaleParams = {
+  crateId: string;
+  contractAddress: string;
+  pricePerItem: string;
+  fromTokenId: string;
+  toTokenId: string;
+};
+
+export type ConsecutivePurchaseParams = {
+  amount: string;
+  saleId: string;
+  sender: string;
+};
+
+// Consecutive Purchase Return Types
+interface CPRT {
+  contractAddress: string;
+  toTokenId: string;
+  commission: string;
+  amountToPurchase: string;
+  sellerAddress: string;
+  saleId: string;
+  nonce: string;
+  crateID: string;
+  signature: string;
+}
+
+export type ConsecutivePurchaseReturn = [
+  CPRT['contractAddress'],
+  [CPRT['toTokenId'], CPRT['commission'], CPRT['amountToPurchase']],
+  CPRT['sellerAddress'],
+  [CPRT['saleId'], CPRT['nonce'], CPRT['crateID']],
+  CPRT['signature'],
+  { from: string; value: string }
+];
