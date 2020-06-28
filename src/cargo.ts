@@ -171,10 +171,10 @@ class Cargo extends Emitter {
     this.setUpWeb3();
   }
 
-  private denominator = new BigNumber(1 * 10 ** 18);
+  private denominator = new BigNumber(10 ** 18);
 
   public getCommission = (percent: number) =>
-    this.denominator.times(new BigNumber(percent)).toFixed();
+    this.denominator.times(percent).toFixed();
 
   public fromCommission = (val: string) =>
     new BigNumber(val).div(this.denominator).toFixed();
