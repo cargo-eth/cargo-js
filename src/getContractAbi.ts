@@ -28,14 +28,14 @@ type Cache = {
 export default (requestUrl: string) => {
   let cache: Cache;
   try {
-    cache = JSON.parse(localStorage.getItem(CARGO_LOCAL_STORAGE_KEY)) || {};
+    cache = JSON.parse(sessionStorage.getItem(CARGO_LOCAL_STORAGE_KEY)) || {};
   } catch (e) {
     cache = {};
   }
 
   const setCache = (contract: ContractNames, value: ContractData) => {
     cache[contract] = value;
-    localStorage.setItem(CARGO_LOCAL_STORAGE_KEY, JSON.stringify(cache));
+    sessionStorage.setItem(CARGO_LOCAL_STORAGE_KEY, JSON.stringify(cache));
   };
 
   const getContract = async (
