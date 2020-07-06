@@ -19,6 +19,7 @@ import {
   CreateConsecutiveSaleParams,
   ConsecutivePurchaseParams,
   ConsecutivePurchaseReturn,
+  SellErc1155Body,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -347,6 +348,7 @@ export default class CargoApi {
   getResaleItems = async (options: {
     showcaseId?: string;
     collectionId?: string;
+    collectionAddress?: string;
     page?: string;
     limit?: string;
     owned?: string;
@@ -358,8 +360,16 @@ export default class CargoApi {
       'Content-Type': 'application/json',
     };
 
-    const { page, limit, showcaseId, collectionId, owned, slug, slugId } =
-      options || {};
+    const {
+      page,
+      limit,
+      showcaseId,
+      collectionId,
+      owned,
+      slug,
+      slugId,
+      collectionAddress,
+    } = options || {};
 
     if (owned && !this.token) {
       throw new Error(
@@ -387,6 +397,10 @@ export default class CargoApi {
 
     if (showcaseId) {
       query = addToQuery(query, `crateId=${showcaseId}`);
+    }
+
+    if (collectionAddress) {
+      query = addToQuery(query, `collectionAddress=${collectionAddress}`);
     }
 
     if (slug && slugId) {
@@ -1375,5 +1389,101 @@ export default class CargoApi {
       `/v3/get-contract-metadata/${contractAddress}${query}`,
       { headers },
     );
+  };
+
+  public purchaseErc1155 = async (resaleItemId: string) => {
+    await this.isEnabledAndHasProvider();
+    const res = await this.request<
+      {
+        args: [
+          string,
+          string,
+          string[],
+          string[],
+          string,
+          [string, string, string],
+          string
+        ];
+        values: { from: string; value: string };
+      },
+      unknown
+    >(`/v3/1155/purchase`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ resaleItemId, sender: this.cargo.accounts[0] }),
+    });
+    if (res.err === false) {
+      const contract = await this.cargo.getContractInstance('cargoSell');
+      return this.callTxAndPoll(
+        contract.methods.erc1155Purchase(...res.data.args).send,
+      )(res.data.values);
+    } else {
+      return res;
+    }
+  };
+
+  public sellErc1155 = async (
+    {
+      ids,
+      values,
+      price, // wei
+      contractAddress,
+    }: {
+      ids: string[];
+      values: string[];
+      price: string;
+      contractAddress: string;
+    },
+    unapprovedFn: () => any,
+  ) => {
+    await this.isEnabledAndHasProvider();
+
+    const { address: cargoSellAddress } = await this.cargo.getContract(
+      'cargoSell',
+    );
+
+    const contract = await this.cargo.getContractInstance(
+      'erc1155',
+      contractAddress,
+    );
+
+    const isApproved = await contract.methods
+      .isApprovedForAll(this.cargo.accounts[0], cargoSellAddress)
+      .call();
+
+    if (!isApproved) {
+      if (unapprovedFn) {
+        unapprovedFn();
+      }
+      await contract.methods.setApprovalForAll(cargoSellAddress, true).send({
+        from: this.accounts[0],
+      });
+    }
+
+    const body: SellErc1155Body = {
+      contractAddress,
+      price,
+      ids,
+      values,
+      sender: this.cargo.accounts[0],
+    };
+
+    const headers: Record<string, unknown> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (!this.token) {
+      body.signature = await this.getSignature();
+    } else {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    return this.request(`/v3/1155/sell`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers,
+    });
   };
 }

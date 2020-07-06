@@ -201,3 +201,12 @@ export type ConsecutivePurchaseReturn = [
   CPRT['signature'],
   { from: string; value: string }
 ];
+
+export type SellErc1155Body = {
+  ids: string[];
+  values: string[];
+  price: string;
+  contractAddress: string;
+  sender: string;
+  signature?: string;
+};
