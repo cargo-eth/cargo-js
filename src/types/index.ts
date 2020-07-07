@@ -207,6 +207,7 @@ export type SellErc1155Body = {
   values: string[];
   price: string;
   contractAddress: string;
+  crateId?: string;
   sender: string;
   signature?: string;
 };

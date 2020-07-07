@@ -300,27 +300,25 @@ export default class CargoApi {
     CargoApi['_bulkMetadataUpdate']
   >(this._bulkMetadataUpdate);
 
-  private _addCollectionToShowcase = async (
-    contractId: string,
-    crateId: string,
-  ) => {
-    return this.request<ArgsResponse, any>('/v3/add-contract-to-crate', {
+  public addCollectionToShowcase = async (params: {
+    contractId?: string;
+    crateId: string;
+    contractAddress?: string;
+  }) => {
+    this.checkForToken();
+    return this.request<{ success: true }, any>('/v3/add-contract-to-crate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.token}`,
       },
       body: JSON.stringify({
-        crateId,
-        contractId,
+        crateId: params.crateId,
+        contractId: params.contractId,
+        contractAddress: params.contractAddress,
       }),
     });
   };
-
-  public addCollectionToShowcase = this.authenticatedMethod<
-    [string, string],
-    CargoApi['_addCollectionToShowcase']
-  >(this._addCollectionToShowcase);
 
   private _getUserTokensByContract = async (
     options: GetUserTokensByContractParams,
@@ -1428,12 +1426,14 @@ export default class CargoApi {
     {
       ids,
       values,
+      showcaseId,
       price, // wei
       contractAddress,
     }: {
       ids: string[];
       values: string[];
       price: string;
+      showcaseId?: string;
       contractAddress: string;
     },
     unapprovedFn: () => any,
@@ -1466,6 +1466,7 @@ export default class CargoApi {
       contractAddress,
       price,
       ids,
+      crateId: showcaseId,
       values,
       sender: this.cargo.accounts[0],
     };
