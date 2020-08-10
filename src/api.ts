@@ -40,6 +40,7 @@ const signingMessage =
 type ArgsResponse = { args: string[] };
 
 type MintParams = {
+  method?: 'batchMint' | 'mint';
   contractAddress: string;
   amount: string;
   to: string;
@@ -982,6 +983,7 @@ export default class CargoApi {
       previewImage,
       files,
       displayContent,
+      method = 'batchMint',
     }: MintParams) => {
       this.checkForToken();
       const cargoData = await this.cargo.getContractInstance('cargoData');
@@ -1039,13 +1041,17 @@ export default class CargoApi {
         contractAddress,
       );
 
-      const int = parseInt(amount);
-      const method =
-        int === 1
-          ? contract.methods.mint(to, ...args)
-          : contract.methods.batchMint(amount, to, ...args);
+      const fnArgs = [];
 
-      return this.callTxAndPoll(method.send)({ from: this.cargo.accounts[0] });
+      if (method === 'mint') {
+        fnArgs.push(to, ...args);
+      } else {
+        fnArgs.push(amount, to, ...args);
+      }
+
+      const fn = contract.methods[method](...fnArgs);
+
+      return this.callTxAndPoll(fn.send)({ from: this.cargo.accounts[0] });
     },
   );
 
@@ -1316,6 +1322,15 @@ export default class CargoApi {
   public getTokenDetails = async (contractAddress: string, tokenId: string) => {
     return this.request<TokenDetail, any>(
       `/v3/get-token-details/${contractAddress}/${tokenId}`,
+    );
+  };
+
+  public getCollectibleCreator = async (
+    contractAddress: string,
+    tokenId: string,
+  ) => {
+    return this.request<{ createdBy: string; creatorAddress: string }, any>(
+      `/v3/get-collectible-creator/${contractAddress}/${tokenId}`,
     );
   };
 

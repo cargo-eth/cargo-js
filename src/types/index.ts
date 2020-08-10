@@ -135,6 +135,7 @@ export type TokenDetail = {
   tokenURI: string;
   contractName: string;
   contractSymbol: string;
+  contractAddress: string;
 };
 
 export type GetUserShowcaseArgs = {
