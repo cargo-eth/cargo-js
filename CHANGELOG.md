@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.2.3]
 
 - Adding super721 contract
+- Adding page, limit to get vendors api method
 
 ## [3.2.2]
 

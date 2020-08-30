@@ -1276,9 +1276,20 @@ export default class CargoApi {
     CargoApi['_getIndexStatus']
   >(this._getIndexStatus);
 
-  private _getShowcaseVendors = async (crateId: string) =>
-    this.request<PaginationResponseWithResults<CrateVendorV3>, any>(
-      `/v3/get-crate-vendors/${crateId}`,
+  private _getShowcaseVendors = async (
+    crateId: string,
+    page: string,
+    limit: string,
+  ) => {
+    let query = '';
+    if (page) {
+      query = addToQuery(query, `page=${page}`);
+    }
+    if (limit) {
+      query = addToQuery(query, `limit=${limit}`);
+    }
+    return this.request<PaginationResponseWithResults<CrateVendorV3>, any>(
+      `/v3/get-crate-vendors/${crateId}${query}`,
       {
         headers: {
           'Content-Type': 'application/json',
@@ -1286,9 +1297,10 @@ export default class CargoApi {
         },
       },
     );
+  };
 
   public getShowcaseVendors = this.authenticatedMethod<
-    [string],
+    [string, string, string],
     CargoApi['_getShowcaseVendors']
   >(this._getShowcaseVendors);
 
