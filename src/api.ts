@@ -1081,11 +1081,11 @@ export default class CargoApi {
   );
 
   purchase = this.providerMethod(
-    async (tokenId: string, contractAddress: string) => {
+    async (tokenId: string, contractAddress: string, magic?: boolean) => {
       const response = await this.request<
         ArgsResponse & { price: string },
         any
-      >('/v3/purchase', {
+      >(magic ? '/v3/magic-purchase' : '/v3/purchase', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1103,15 +1103,25 @@ export default class CargoApi {
 
       const { args, price } = response.data;
 
-      const contract = await this.cargo.getContractInstance('cargoSell');
+      if (magic) {
+        const contract = await this.cargo.getContractInstance('magicMintUtil');
+        return this.callTxAndPoll(contract.methods.magicPurchase(...args).send)(
+          {
+            from: this.cargo.accounts[0],
+            value: price,
+          },
+        );
+      } else {
+        const contract = await this.cargo.getContractInstance('cargoSell');
 
-      const method =
-        args[3] && args[3].length === 4 ? 'purchaseInCrate' : 'purchase';
+        const method =
+          args[3] && args[3].length === 4 ? 'purchaseInCrate' : 'purchase';
 
-      return this.callTxAndPoll(contract.methods[method](...args).send)({
-        from: this.cargo.accounts[0],
-        value: price,
-      });
+        return this.callTxAndPoll(contract.methods[method](...args).send)({
+          from: this.cargo.accounts[0],
+          value: price,
+        });
+      }
     },
   );
 
@@ -1122,29 +1132,62 @@ export default class CargoApi {
         tokenId,
         price,
         crateId,
+        magic,
       }: {
         contractAddress: string;
         tokenId: string;
         price: string;
         crateId?: string;
+        magic?: boolean;
       },
       unapprovedFn?: () => void,
     ) => {
       const [sender] = this.cargo.accounts;
-      const body: { [key: string]: string } = {
+      const body: { [key: string]: string | boolean } = {
         sender,
         contractAddress,
         tokenId,
         price,
         crateId,
+        magic,
       };
 
-      const { address: cargoSellAddress } = await this.cargo.getContract(
-        'cargoSell',
-      );
+      // if magic
+      // check if owner is creator
+
       const contract = await this.cargo.getContractInstance(
         'cargoNft',
         contractAddress,
+      );
+
+      const returnVal = async () => {
+        const headers: { [key: string]: string } = {
+          'Content-Type': 'application/json',
+        };
+        if (!this.token) {
+          body.signature = await this.getSignature();
+        } else {
+          headers.Authorization = `Bearer ${this.token}`;
+        }
+
+        return this.request('/v3/sell', {
+          method: 'POST',
+          body: JSON.stringify(body),
+          headers,
+        });
+      };
+
+      if (magic) {
+        const owner = await contract.methods.ownerOf(tokenId).call();
+        const creator = await contract.methods.creator().call();
+
+        if (owner === creator) {
+          return returnVal();
+        }
+      }
+
+      const { address: cargoSellAddress } = await this.cargo.getContract(
+        'cargoSell',
       );
 
       const isApproved = await contract.methods
@@ -1159,21 +1202,6 @@ export default class CargoApi {
           from: this.accounts[0],
         });
       }
-
-      const headers: { [key: string]: string } = {
-        'Content-Type': 'application/json',
-      };
-      if (!this.token) {
-        body.signature = await this.getSignature();
-      } else {
-        headers.Authorization = `Bearer ${this.token}`;
-      }
-
-      return await this.request('/v3/sell', {
-        method: 'POST',
-        body: JSON.stringify(body),
-        headers,
-      });
     },
   );
 
