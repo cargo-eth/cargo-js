@@ -1056,15 +1056,44 @@ export default class CargoApi {
   );
 
   transferCollectible = this.providerMethod(
-    async (contractAddress: string, tokenId: string, to: string) => {
-      const contract = await this.cargo.getContractInstance(
-        'cargoNft',
-        contractAddress,
-      );
-      return this.callTxAndPoll(
-        contract.methods.safeTransferFrom(this.cargo.accounts[0], to, tokenId)
-          .send,
-      )({ from: this.cargo.accounts[0] });
+    async (
+      contractAddress: string,
+      tokenId: string,
+      to: string,
+      magic?: boolean,
+    ) => {
+      if (magic) {
+        const contract = await this.cargo.getContractInstance('magicMintUtil');
+        const res = await this.request<{ args: string[] }, any>(
+          '/v3/magic-transfer',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${this.token}`,
+            },
+            body: JSON.stringify({
+              to,
+              tokenId,
+              from: this.cargo.accounts[0],
+            }),
+          },
+        );
+        if (res.err === false) {
+          return this.callTxAndPoll(
+            contract.methods.transferToken(...res.data.args).send,
+          )({ from: this.cargo.accounts[0] });
+        }
+      } else {
+        const contract = await this.cargo.getContractInstance(
+          'cargoNft',
+          contractAddress,
+        );
+        return this.callTxAndPoll(
+          contract.methods.safeTransferFrom(this.cargo.accounts[0], to, tokenId)
+            .send,
+        )({ from: this.cargo.accounts[0] });
+      }
     },
   );
 
@@ -1202,6 +1231,7 @@ export default class CargoApi {
           from: this.accounts[0],
         });
       }
+      return returnVal();
     },
   );
 
