@@ -12,6 +12,9 @@ const VALID_CONTRACTS: ContractNames[] = [
   'cargoMintingCredits',
   'super721',
   'magicMintUtil',
+  'cargoGemsStaking',
+  'erc20',
+  'cargoGems',
 ];
 
 const CARGO_LOCAL_STORAGE_KEY = `__CARGO_LS_KEY__${packageJson.version}`;

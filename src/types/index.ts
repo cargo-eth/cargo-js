@@ -126,6 +126,18 @@ export type ResaleItemV3 = {
   metadata?: { [key: string]: any };
 };
 
+export type StakedTokensResponse = {
+  totalStakedAmount: string;
+  totalAvailableRewards: string;
+  tokens: {
+    contract: string;
+    owner: string;
+    tokenId: string;
+    stakedAmount: string;
+    details: TokenDetail;
+  }[];
+};
+
 export type TokenDetail = {
   owner?: string;
   ownerAddress: string;

@@ -20,6 +20,7 @@ import {
   ConsecutivePurchaseParams,
   ConsecutivePurchaseReturn,
   SellErc1155Body,
+  StakedTokensResponse,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -1574,5 +1575,30 @@ export default class CargoApi {
       body: JSON.stringify(body),
       headers,
     });
+  };
+
+  public approveGems = async (amount: string) => {
+    const staking = await this.cargo.getContract('cargoGemsStaking');
+    const gems = await this.cargo.getContractInstance('cargoGems');
+    return this.callTxAndPoll(
+      gems.methods.approve(staking.address, amount).send,
+    )({ from: this.cargo.accounts[0] });
+  };
+
+  public stakeGems = async (
+    contractAddress: string,
+    tokenId: string,
+    amount: string,
+  ) => {
+    const staking = await this.cargo.getContractInstance('cargoGemsStaking');
+    return this.callTxAndPoll(
+      staking.methods.stake(contractAddress, tokenId, amount).send,
+    )({ from: this.cargo.accounts[0] });
+  };
+
+  public getStakedTokens = async (address: string) => {
+    return this.request<StakedTokensResponse, any>(
+      `/v3/staked-tokens/${address}`,
+    );
   };
 }

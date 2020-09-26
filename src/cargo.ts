@@ -41,6 +41,9 @@ export type ContractNames =
   | 'cargoSell'
   | 'cargoMintingCredits'
   | 'super721'
+  | 'cargoGemsStaking'
+  | 'erc20'
+  | 'cargoGems'
   | 'cargoVendor';
 
 type ContractObject = {
