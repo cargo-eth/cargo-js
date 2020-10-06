@@ -20,6 +20,7 @@ import {
   ConsecutivePurchaseParams,
   ConsecutivePurchaseReturn,
   SellErc1155Body,
+  StakedTokensResponse,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -437,13 +438,14 @@ export default class CargoApi {
     limit?: string;
     showcaseId?: string;
     owned?: boolean;
+    cargoContract?: boolean;
     useAuthToken?: boolean;
   }) => {
     const headers: { [key: string]: string } = {
       'Content-Type': 'application/json',
     };
 
-    const { page, limit, showcaseId, owned } = options || {};
+    const { page, limit, showcaseId, owned, cargoContract } = options || {};
 
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
@@ -453,6 +455,10 @@ export default class CargoApi {
 
     if (showcaseId) {
       query += `&crateId=${showcaseId}`;
+    }
+
+    if (cargoContract) {
+      query += `&cargoContract=true`;
     }
 
     if (owned != null) {
@@ -1574,5 +1580,58 @@ export default class CargoApi {
       body: JSON.stringify(body),
       headers,
     });
+  };
+
+  public approveGems = async (amount: string) => {
+    const staking = await this.cargo.getContract('cargoGemsStaking');
+    const gems = await this.cargo.getContractInstance('cargoGems');
+    return this.callTxAndPoll(
+      gems.methods.approve(staking.address, amount).send,
+    )({ from: this.cargo.accounts[0] });
+  };
+
+  public stakeGems = async (
+    contractAddress: string,
+    tokenId: string,
+    amount: string,
+  ) => {
+    const staking = await this.cargo.getContractInstance('cargoGemsStaking');
+    return this.callTxAndPoll(
+      staking.methods.stake(contractAddress, tokenId, amount).send,
+    )({ from: this.cargo.accounts[0] });
+  };
+
+  public getStakedTokens = async (address: string) => {
+    return this.request<StakedTokensResponse, any>(
+      `/v3/staked-tokens/${address}`,
+    );
+  };
+
+  public claimAndStakeRewards = async (address, tokenId) => {
+    const res = await this.request<ArgsResponse, any>(
+      `/v3/claim/${address}/${tokenId}`,
+    );
+    if (res.err === false) {
+      const staking = await this.cargo.getContractInstance('cargoGemsStaking');
+      return this.callTxAndPoll(staking.methods.claim(...res.data.args).send)({
+        from: this.cargo.accounts[0],
+      });
+    } else {
+      throw new Error(JSON.stringify(res));
+    }
+  };
+
+  public withdraw = async (address, tokenId, amount) => {
+    const res = await this.request<ArgsResponse, any>(
+      `/v3/claim/${address}/${tokenId}?amount=${amount}`,
+    );
+    if (res.err === false) {
+      const staking = await this.cargo.getContractInstance('cargoGemsStaking');
+      return this.callTxAndPoll(staking.methods.claim(...res.data.args).send)({
+        from: this.cargo.accounts[0],
+      });
+    } else {
+      throw new Error(JSON.stringify(res));
+    }
   };
 }

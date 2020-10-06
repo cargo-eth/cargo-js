@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-ignore
 import Web3 from 'web3';
 import { Cargo } from './cargo';
@@ -22,11 +23,21 @@ class Emitter {
     }
   }
 
+  once(name: string, fn: EventCallback) {
+    // @ts-ignore
+    fn.__once__ = true;
+    this.on(name, fn);
+  }
+
   emit(name: string, ...args: any[]) {
     const event = this.events[name];
     if (Array.isArray(event)) {
-      event.forEach(fn => {
+      event.forEach((fn, i) => {
         fn(...args);
+        // @ts-ignore
+        if (fn.__once__) {
+          event.splice(i, 1);
+        }
       });
     }
   }
