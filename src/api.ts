@@ -786,10 +786,7 @@ export default class CargoApi {
       'cargoMintingCredits',
     );
     const balance = await contract.methods.balanceOf(this.accounts[0]).call();
-    return new this.cargo.BigNumber(balance)
-      .div(10 ** 18)
-      .integerValue(this.cargo.BigNumber.ROUND_FLOOR)
-      .toFixed();
+    return new this.cargo.BigNumber(balance).div(10 ** 18).toFixed(4);
   });
 
   purchaseCreditPack = this.providerMethod(

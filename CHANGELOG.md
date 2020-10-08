@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.2.4]
 
 - Adding Gem staking methods
-- Adding `once` method to PollTx 
+- Adding `once` method to PollTx
+- Remove rounding of Cargo Credits 
 
 ## [3.2.3]
 
