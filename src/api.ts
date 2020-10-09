@@ -691,9 +691,51 @@ export default class CargoApi {
     return response;
   });
 
-  callTxAndPoll = (method: Function) => (...args: any[]) =>
-    new Promise((resolve, reject) => {
-      method(...args)
+  estimateGas = async (m, params) => {
+    const gasPrice = await fetch(
+      'https://ethgasstation.info/api/ethgasAPI.json?api-key=7eb1f2d4c3e80bdf25b5385ab725e644819f3709af412e228a26f81e13d2',
+    )
+      .then(res => res.json())
+      .then(json => {
+        return json.fast / 10;
+      });
+
+    console.log(gasPrice, params);
+    const estimatedGas = await m.estimateGas({
+      gasPrice: this.cargo.web3.utils.toWei(
+        new this.cargo.BigNumber(gasPrice).toFixed(),
+        'gwei',
+      ),
+      ...params,
+    });
+
+    const additionalGas = new this.cargo.BigNumber(estimatedGas)
+      .times(0.12)
+      .toFixed(0);
+    const finalGas = new this.cargo.BigNumber(estimatedGas)
+      .plus(additionalGas)
+      .toFixed();
+
+    return {
+      gas: finalGas,
+      gasPrice: this.cargo.web3.utils.toWei(
+        new this.cargo.BigNumber(gasPrice).toFixed(),
+        'gwei',
+      ),
+    };
+  };
+
+  callTxAndPoll = (method: Function) => params =>
+    new Promise(async (resolve, reject) => {
+      if (this.cargo.estimateGas) {
+        const gasParams = await this.estimateGas(method, params);
+        params = {
+          ...params,
+          ...gasParams,
+        };
+      }
+      method
+        .send(params)
         .once('transactionHash', hash => {
           this.cargo.pollTx.watch(hash);
           resolve(hash);
@@ -703,43 +745,46 @@ export default class CargoApi {
         });
     });
 
-  cancelSale = this.providerMethod(async (resaleItemId: string) => {
-    const body: { [key: string]: string } = { resaleItemId };
-    const headers: typeof body = {
-      'Content-Type': 'application/json',
-    };
-    if (!this.token) {
-      const signature = await this.getSignature();
-      body.signature = signature;
-      body.sender = this.cargo.accounts[0];
-    } else {
-      headers.Authorization = `Bearer ${this.token}`;
-    }
+  cancelSale = this.providerMethod(
+    async (resaleItemId: string, web3TxParams?: any) => {
+      const body: { [key: string]: string } = { resaleItemId };
+      const headers: typeof body = {
+        'Content-Type': 'application/json',
+      };
+      if (!this.token) {
+        const signature = await this.getSignature();
+        body.signature = signature;
+        body.sender = this.cargo.accounts[0];
+      } else {
+        headers.Authorization = `Bearer ${this.token}`;
+      }
 
-    const response = await this.request<
-      ArgsResponse & { signatureGenerated?: boolean },
-      any
-    >('/v3/cancel-sale', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (response.err === true) {
-      throw new Error(JSON.stringify(response));
-    }
-
-    const { args, signatureGenerated } = response.data;
-
-    if (signatureGenerated) {
-      const contract = await this.cargo.getContractInstance('cargoSell');
-      return this.callTxAndPoll(contract.methods.cancelSale(...args).send)({
-        from: this.cargo.accounts[0],
+      const response = await this.request<
+        ArgsResponse & { signatureGenerated?: boolean },
+        any
+      >('/v3/cancel-sale', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
       });
-    } else {
-      return response;
-    }
-  });
+
+      if (response.err === true) {
+        throw new Error(JSON.stringify(response));
+      }
+
+      const { args, signatureGenerated } = response.data;
+
+      if (signatureGenerated) {
+        const contract = await this.cargo.getContractInstance('cargoSell');
+        return this.callTxAndPoll(contract.methods.cancelSale(...args))({
+          from: this.cargo.accounts[0],
+          ...web3TxParams,
+        });
+      } else {
+        return response;
+      }
+    },
+  );
 
   updateBeneficiaryCommission = this.providerMethod(
     this.authenticatedMethod(
@@ -747,6 +792,7 @@ export default class CargoApi {
         beneficiaryAddress: string,
         commission: number,
         crateId: string,
+        web3TxParams?: any,
       ) => {
         const response = await this.request<ArgsResponse, any>(
           '/v3/update-beneficiary-commission',
@@ -776,6 +822,7 @@ export default class CargoApi {
           contract.methods.updateBeneficiaryCommission(...args).send,
         )({
           from: this.cargo.accounts[0],
+          ...web3TxParams,
         });
       },
     ),
@@ -790,44 +837,51 @@ export default class CargoApi {
   });
 
   purchaseCreditPack = this.providerMethod(
-    async (pack: string, price: string) => {
+    async (pack: string, price: string, web3TxParams?: any) => {
       const contract = await this.cargo.getContractInstance(
         'cargoMintingCredits',
       );
 
-      return this.callTxAndPoll(contract.methods.purchaseBalance(pack).send)({
+      return this.callTxAndPoll(contract.methods.purchaseBalance(pack))({
         from: this.cargo.accounts[0],
         value: price,
+        ...web3TxParams,
       });
     },
   );
 
   addVendor = this.providerMethod(
-    this.authenticatedMethod(async (vendorAddress: string, crateId: string) => {
-      const response = await this.request<ArgsResponse, any>('/v3/add-vendor', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.token}`,
-        },
-        body: JSON.stringify({
-          vendorAddress,
-          crateId,
-        }),
-      });
+    this.authenticatedMethod(
+      async (vendorAddress: string, crateId: string, web3TxParams?: any) => {
+        const response = await this.request<ArgsResponse, any>(
+          '/v3/add-vendor',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${this.token}`,
+            },
+            body: JSON.stringify({
+              vendorAddress,
+              crateId,
+            }),
+          },
+        );
 
-      if (response.err === true) {
-        throw new Error(JSON.stringify(response));
-      }
+        if (response.err === true) {
+          throw new Error(JSON.stringify(response));
+        }
 
-      const { args } = response.data;
+        const { args } = response.data;
 
-      const contract = await this.cargo.getContractInstance('cargoVendor');
+        const contract = await this.cargo.getContractInstance('cargoVendor');
 
-      return this.callTxAndPoll(contract.methods.addVendor(...args).send)({
-        from: this.cargo.accounts[0],
-      });
-    }),
+        return this.callTxAndPoll(contract.methods.addVendor(...args))({
+          from: this.cargo.accounts[0],
+          ...web3TxParams,
+        });
+      },
+    ),
   );
 
   addBeneficiary = this.providerMethod(
@@ -836,6 +890,7 @@ export default class CargoApi {
         crateId: string,
         beneficiaryAddress: string,
         commission: number,
+        web3TxParams?: any,
       ) => {
         const isValidCommission = commission => 0 && commission <= 1;
         if (!isValidCommission) {
@@ -869,6 +924,7 @@ export default class CargoApi {
           contract.methods.addBeneficiary(...args).send,
         )({
           from: this.cargo.accounts[0],
+          ...web3TxParams,
         });
       },
     ),
@@ -876,7 +932,11 @@ export default class CargoApi {
 
   removeBeneficiary = this.providerMethod(
     this.authenticatedMethod(
-      async (beneficiaryAddress: string, crateId: string) => {
+      async (
+        beneficiaryAddress: string,
+        crateId: string,
+        web3TxParams?: any,
+      ) => {
         const response = await this.request<ArgsResponse, any>(
           '/v3/remove-beneficiary',
           {
@@ -904,6 +964,7 @@ export default class CargoApi {
           contract.methods.removeBeneficiary(...args).send,
         )({
           from: this.cargo.accounts[0],
+          ...web3TxParams,
         });
       },
     ),
@@ -913,6 +974,7 @@ export default class CargoApi {
     name: string,
     symbol?: string,
     crateId?: string,
+    web3TxParams?: any,
   ) => {
     // Adding this here instead of using this.authenticatedMethod
     // because of optional parameters
@@ -948,9 +1010,10 @@ export default class CargoApi {
 
     const contract = await this.cargo.getContractInstance('nftCreator');
 
-    return this.callTxAndPoll(contract.methods.createContract(...args).send)({
+    return this.callTxAndPoll(contract.methods.createContract(...args))({
       from: this.cargo.accounts[0],
       value: price,
+      ...web3TxParams,
     });
   };
 
@@ -976,18 +1039,21 @@ export default class CargoApi {
   >(this._createContract);
 
   mint = this.providerMethod(
-    async ({
-      contractAddress,
-      amount,
-      to,
-      name,
-      description,
-      metadata,
-      previewImage,
-      files,
-      displayContent,
-      method = 'batchMint',
-    }: MintParams) => {
+    async (
+      {
+        contractAddress,
+        amount,
+        to,
+        name,
+        description,
+        metadata,
+        previewImage,
+        files,
+        displayContent,
+        method = 'batchMint',
+      }: MintParams,
+      web3TxParams?: any,
+    ) => {
       this.checkForToken();
       const cargoData = await this.cargo.getContractInstance('cargoData');
       const isCargoContract = await cargoData.methods
@@ -1054,7 +1120,10 @@ export default class CargoApi {
 
       const fn = contract.methods[method](...fnArgs);
 
-      return this.callTxAndPoll(fn.send)({ from: this.cargo.accounts[0] });
+      return this.callTxAndPoll(fn)({
+        from: this.cargo.accounts[0],
+        ...web3TxParams,
+      });
     },
   );
 
@@ -1064,6 +1133,7 @@ export default class CargoApi {
       tokenId: string,
       to: string,
       magic?: boolean,
+      web3TxParams?: any,
     ) => {
       if (magic) {
         const contract = await this.cargo.getContractInstance('magicMintUtil');
@@ -1085,7 +1155,7 @@ export default class CargoApi {
         if (res.err === false) {
           return this.callTxAndPoll(
             contract.methods.transferToken(...res.data.args).send,
-          )({ from: this.cargo.accounts[0] });
+          )({ from: this.cargo.accounts[0], ...web3TxParams });
         }
       } else {
         const contract = await this.cargo.getContractInstance(
@@ -1095,25 +1165,31 @@ export default class CargoApi {
         return this.callTxAndPoll(
           contract.methods.safeTransferFrom(this.cargo.accounts[0], to, tokenId)
             .send,
-        )({ from: this.cargo.accounts[0] });
+        )({ from: this.cargo.accounts[0], ...web3TxParams });
       }
     },
   );
 
   burnCollectible = this.providerMethod(
-    async (contractAddress: string, tokenId: string) => {
+    async (contractAddress: string, tokenId: string, web3TxParams?: any) => {
       const contract = await this.cargo.getContractInstance(
         'cargoNft',
         contractAddress,
       );
-      return this.callTxAndPoll(contract.methods.burn(tokenId).send)({
+      return this.callTxAndPoll(contract.methods.burn(tokenId))({
         from: this.cargo.accounts[0],
+        ...web3TxParams,
       });
     },
   );
 
   purchase = this.providerMethod(
-    async (tokenId: string, contractAddress: string, magic?: boolean) => {
+    async (
+      tokenId: string,
+      contractAddress: string,
+      magic?: boolean,
+      web3TxParams?: any,
+    ) => {
       const response = await this.request<
         ArgsResponse & { price: string },
         any
@@ -1137,21 +1213,21 @@ export default class CargoApi {
 
       if (magic) {
         const contract = await this.cargo.getContractInstance('magicMintUtil');
-        return this.callTxAndPoll(contract.methods.magicPurchase(...args).send)(
-          {
-            from: this.cargo.accounts[0],
-            value: price,
-          },
-        );
+        return this.callTxAndPoll(contract.methods.magicPurchase(...args))({
+          from: this.cargo.accounts[0],
+          value: price,
+          ...web3TxParams,
+        });
       } else {
         const contract = await this.cargo.getContractInstance('cargoSell');
 
         const method =
           args[3] && args[3].length === 4 ? 'purchaseInCrate' : 'purchase';
 
-        return this.callTxAndPoll(contract.methods[method](...args).send)({
+        return this.callTxAndPoll(contract.methods[method](...args))({
           from: this.cargo.accounts[0],
           value: price,
+          ...web3TxParams,
         });
       }
     },
@@ -1275,34 +1351,37 @@ export default class CargoApi {
   );
 
   removeVendor = this.providerMethod(
-    this.authenticatedMethod(async (vendorAddress: string, crateId: string) => {
-      const response = await this.request<ArgsResponse, any>(
-        '/v3/remove-vendor',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.token}`,
+    this.authenticatedMethod(
+      async (vendorAddress: string, crateId: string, web3TxParams?: any) => {
+        const response = await this.request<ArgsResponse, any>(
+          '/v3/remove-vendor',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${this.token}`,
+            },
+            body: JSON.stringify({
+              vendorAddress,
+              crateId,
+            }),
           },
-          body: JSON.stringify({
-            vendorAddress,
-            crateId,
-          }),
-        },
-      );
+        );
 
-      if (response.err === true) {
-        throw new Error(JSON.stringify(response));
-      }
+        if (response.err === true) {
+          throw new Error(JSON.stringify(response));
+        }
 
-      const { args } = response.data;
+        const { args } = response.data;
 
-      const contract = await this.cargo.getContractInstance('cargoVendor');
+        const contract = await this.cargo.getContractInstance('cargoVendor');
 
-      return this.callTxAndPoll(contract.methods.removeVendor(...args).send)({
-        from: this.cargo.accounts[0],
-      });
-    }),
+        return this.callTxAndPoll(contract.methods.removeVendor(...args))({
+          from: this.cargo.accounts[0],
+          ...web3TxParams,
+        });
+      },
+    ),
   );
 
   private _getVendorBeneficiaries = async (
@@ -1480,7 +1559,7 @@ export default class CargoApi {
     );
   };
 
-  public purchaseErc1155 = async (resaleItemId: string) => {
+  public purchaseErc1155 = async (resaleItemId: string, web3TxParams?: any) => {
     await this.isEnabledAndHasProvider();
     const res = await this.request<
       {
@@ -1507,7 +1586,7 @@ export default class CargoApi {
       const contract = await this.cargo.getContractInstance('cargoSell');
       return this.callTxAndPoll(
         contract.methods.erc1155Purchase(...res.data.args).send,
-      )(res.data.values);
+      )({ ...res.data.values, ...web3TxParams });
     } else {
       return res;
     }
@@ -1579,23 +1658,24 @@ export default class CargoApi {
     });
   };
 
-  public approveGems = async (amount: string) => {
+  public approveGems = async (amount: string, web3TxParams?: any) => {
     const staking = await this.cargo.getContract('cargoGemsStaking');
     const gems = await this.cargo.getContractInstance('cargoGems');
     return this.callTxAndPoll(
       gems.methods.approve(staking.address, amount).send,
-    )({ from: this.cargo.accounts[0] });
+    )({ from: this.cargo.accounts[0], ...web3TxParams });
   };
 
   public stakeGems = async (
     contractAddress: string,
     tokenId: string,
     amount: string,
+    web3TxParams?: any,
   ) => {
     const staking = await this.cargo.getContractInstance('cargoGemsStaking');
     return this.callTxAndPoll(
       staking.methods.stake(contractAddress, tokenId, amount).send,
-    )({ from: this.cargo.accounts[0] });
+    )({ from: this.cargo.accounts[0], ...web3TxParams });
   };
 
   public getStakedTokens = async (address: string) => {
@@ -1604,28 +1684,39 @@ export default class CargoApi {
     );
   };
 
-  public claimAndStakeRewards = async (address, tokenId) => {
+  public claimAndStakeRewards = async (
+    address: string,
+    tokenId: string,
+    web3TxParams?: any,
+  ) => {
     const res = await this.request<ArgsResponse, any>(
       `/v3/claim/${address}/${tokenId}`,
     );
     if (res.err === false) {
       const staking = await this.cargo.getContractInstance('cargoGemsStaking');
-      return this.callTxAndPoll(staking.methods.claim(...res.data.args).send)({
+      return this.callTxAndPoll(staking.methods.claim(...res.data.args))({
         from: this.cargo.accounts[0],
+        ...web3TxParams,
       });
     } else {
       throw new Error(JSON.stringify(res));
     }
   };
 
-  public withdraw = async (address, tokenId, amount) => {
+  public withdraw = async (
+    address: string,
+    tokenId: string,
+    amount: string,
+    web3TxParams?: any,
+  ) => {
     const res = await this.request<ArgsResponse, any>(
       `/v3/claim/${address}/${tokenId}?amount=${amount}`,
     );
     if (res.err === false) {
       const staking = await this.cargo.getContractInstance('cargoGemsStaking');
-      return this.callTxAndPoll(staking.methods.claim(...res.data.args).send)({
+      return this.callTxAndPoll(staking.methods.claim(...res.data.args))({
         from: this.cargo.accounts[0],
+        ...web3TxParams,
       });
     } else {
       throw new Error(JSON.stringify(res));

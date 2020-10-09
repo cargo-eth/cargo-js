@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adding Gem staking methods
 - Adding `once` method to PollTx
 - Remove rounding of Cargo Credits 
+- Add estimate gas function
 
 ## [3.2.3]
 

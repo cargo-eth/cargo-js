@@ -111,6 +111,8 @@ class Cargo extends Emitter {
 
   api?: CargoApi;
 
+  estimateGas?: boolean;
+
   BigNumber: typeof BigNumber;
 
   pollTx?: PollTx;
