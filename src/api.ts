@@ -1160,8 +1160,11 @@ export default class CargoApi {
           contractAddress,
         );
         return this.callTxAndPoll(
-          contract.methods.safeTransferFrom(this.cargo.accounts[0], to, tokenId)
-            .send,
+          contract.methods.safeTransferFrom(
+            this.cargo.accounts[0],
+            to,
+            tokenId,
+          ),
         )({ from: this.cargo.accounts[0], ...web3TxParams });
       }
     },
