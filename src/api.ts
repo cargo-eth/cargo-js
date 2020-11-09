@@ -347,6 +347,7 @@ export default class CargoApi {
 
   getResaleItems = async (options: {
     showcaseId?: string;
+    seller?: string;
     collectionId?: string;
     collectionAddress?: string;
     page?: string;
@@ -355,6 +356,16 @@ export default class CargoApi {
     // If slug is present slug id is required
     slug?: string;
     slugId?: string;
+    // default sort is by popularity
+    sort?: 'new' | 'high-to-low' | 'low-to-high';
+    filter: {
+      containsGem?: boolean;
+      builtOnCargo?: boolean;
+      threed?: boolean;
+      audio?: boolean;
+      video?: boolean;
+      image?: boolean;
+    };
   }) => {
     const headers: { [key: string]: string } = {
       'Content-Type': 'application/json',
@@ -369,6 +380,9 @@ export default class CargoApi {
       slug,
       slugId,
       collectionAddress,
+      sort,
+      filter,
+      seller,
     } = options || {};
 
     if (owned && !this.token) {
@@ -382,6 +396,22 @@ export default class CargoApi {
     }
 
     let query = '';
+
+    if (sort) {
+      query = addToQuery(query, `sort=${sort}`);
+    }
+
+    if (seller) {
+      query = addToQuery(query, `seller=${seller}`);
+    }
+
+    if (filter) {
+      try {
+        query = addToQuery(query, `filter=${JSON.stringify(filter)}`);
+      } catch (e) {
+        throw new Error('Cargo JS: filter must be an object');
+      }
+    }
 
     if (page) {
       query = addToQuery(query, `page=${page}`);
@@ -1444,10 +1474,12 @@ export default class CargoApi {
     CargoApi['_getShowcaseVendors']
   >(this._getShowcaseVendors);
 
-  private _getUserShowcases = async ({
+  public getUserShowcases = async ({
     page,
     limit,
-  }: GetUserShowcaseArgs = {}) => {
+    account,
+    useAuth = true,
+  }: GetUserShowcaseArgs) => {
     let query = '';
     if (page) {
       query = addToQuery(query, `page=${page}`);
@@ -1456,20 +1488,25 @@ export default class CargoApi {
     if (limit) {
       query = addToQuery(query, `limit=${limit}`);
     }
-    return this.request<PaginationResponseWithResults<UserCrateV3>, any>(
-      `/v3/get-user-crates${query}`,
-      {
+
+    if (account) {
+      query = addToQuery(query, `account=${account}`);
+    }
+
+    let params = {};
+
+    if (useAuth) {
+      params = {
         headers: {
           Authorization: `Bearer ${this.token}`,
         },
-      },
+      };
+    }
+    return this.request<PaginationResponseWithResults<UserCrateV3>, any>(
+      `/v3/get-user-crates${query}`,
+      params,
     );
   };
-
-  public getUserShowcases = this.authenticatedMethod<
-    [GetUserShowcaseArgs],
-    CargoApi['_getUserShowcases']
-  >(this._getUserShowcases);
 
   public getTokenDetails = async (contractAddress: string, tokenId: string) => {
     return this.request<TokenDetail, any>(
@@ -1704,6 +1741,39 @@ export default class CargoApi {
     }
   };
 
+  public batchClaimAndStakeRewards = async (
+    data: {
+      address: string;
+      tokenId: string;
+      web3TxParams?: any;
+    }[],
+  ) => {
+    const batch = new this.cargo.web3.BatchRequest();
+
+    await Promise.all(
+      data.map(({ address, tokenId, web3TxParams }) => {
+        const fn = async () => {
+          const res = await this.request<ArgsResponse, any>(
+            `/v3/claim/${address}/${tokenId}`,
+          );
+          if (res.err === false) {
+            const staking = await this.cargo.getContractInstance(
+              'cargoGemsStaking',
+            );
+            batch.add(
+              staking.methods.claim(...res.data.args).send.request({
+                from: this.cargo.accounts[0],
+                ...web3TxParams,
+              }),
+            );
+          }
+        };
+        return fn();
+      }),
+    );
+    batch.execute();
+  };
+
   public withdraw = async (
     address: string,
     tokenId: string,
@@ -1722,5 +1792,17 @@ export default class CargoApi {
     } else {
       throw new Error(JSON.stringify(res));
     }
+  };
+
+  public getTokenStake = async (address: string, tokenId: string) => {
+    const res = await this.request<{ balance: string }, any>(
+      `/v3/stake/${address}/${tokenId}`,
+    );
+
+    if (res.err === true) {
+      throw new Error(JSON.stringify(res));
+    }
+
+    return res.data.balance;
   };
 }

@@ -153,6 +153,8 @@ export type TokenDetail = {
 export type GetUserShowcaseArgs = {
   page?: string;
   limit?: string;
+  useAuth?: boolean;
+  account?: string;
 };
 
 export type GetShowcaseByIdResponse = {
