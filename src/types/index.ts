@@ -76,6 +76,7 @@ export type GetOrderParams = {
 };
 
 export type ContractV3 = {
+  _id: string;
   address: string;
   name: string;
   symbol: string;
@@ -89,6 +90,8 @@ export type ContractV3 = {
 export type GetUserTokensByContractParams = {
   page?: string;
   limit?: string;
+  skipAuth?: true;
+  address?: string;
   contractId: string;
 };
 
@@ -153,6 +156,8 @@ export type TokenDetail = {
 export type GetUserShowcaseArgs = {
   page?: string;
   limit?: string;
+  useAuth?: boolean;
+  account?: string;
 };
 
 export type GetShowcaseByIdResponse = {
@@ -165,6 +170,21 @@ export type GetShowcaseByIdResponse = {
   isOwner?: boolean;
   isVendor?: boolean;
   owner: { displayUsername: string; address: string };
+};
+
+export type GetUserTokensByContractRespose = {
+  tokenId: string;
+  metadata: Record<string, any>;
+  tokenURI: string;
+  resaleItem?: ResaleItem;
+  owner: string;
+};
+
+export type ShowcaseItem = {
+  tokenId: string;
+  metadata: Record<string, any>;
+  resaleItem?: ResaleItem;
+  collection: ContractV3;
 };
 
 export type GetTokensByContractResponse = {
