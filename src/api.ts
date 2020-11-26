@@ -21,6 +21,8 @@ import {
   ConsecutivePurchaseReturn,
   SellErc1155Body,
   StakedTokensResponse,
+  GetUserTokensByContractRespose,
+  ShowcaseItem,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -302,48 +304,129 @@ export default class CargoApi {
     CargoApi['_bulkMetadataUpdate']
   >(this._bulkMetadataUpdate);
 
-  public addCollectionToShowcase = async (params: {
-    contractId?: string;
-    crateId: string;
-    contractAddress?: string;
-  }) => {
+  public addCollectiblesToShowcase = async (
+    items: Record<string, string[]>,
+    showcaseId,
+  ) => {
     this.checkForToken();
-    return this.request<{ success: true }, any>('/v3/add-contract-to-crate', {
+    return this.request<{ success: true }, any>(`/v3/showcase/add-items`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.token}`,
       },
-      body: JSON.stringify({
-        crateId: params.crateId,
-        contractId: params.contractId,
-        contractAddress: params.contractAddress,
-      }),
+      body: JSON.stringify({ items, showcaseId }),
     });
   };
 
-  private _getUserTokensByContract = async (
+  public removeCollectiblesFromShowcase = async (
+    items: Record<string, string[]>,
+    showcaseId,
+  ) => {
+    this.checkForToken();
+    return this.request<{ success: true }, any>(`/v3/showcase/remove-items`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: JSON.stringify({ items, showcaseId }),
+    });
+  };
+
+  public getUserTokensByContract = async (
     options: GetUserTokensByContractParams,
   ) => {
     if (!options || !options.contractId) {
       throw new Error('Missing contract ID');
     }
-    let query = '';
+    const query = new URLSearchParams('');
     if (options.limit) {
-      query += `?limit=${options.limit}`;
+      query.append('limit', options.limit);
     }
     if (options.page) {
-      query += `${query.length ? '&' : '?'}page=${options.page}`;
+      query.append('page', options.page);
     }
-    return this.request(`/v3/get-user-tokens/${options.contractId}${query}`, {
-      headers: { Authorization: `Bearer ${this.token}` },
-    });
+    if (options.address) {
+      query.append('address', options.address);
+    }
+    const queryStr = query.toString();
+    return this.request<
+      PaginationResponseWithResults<GetUserTokensByContractRespose[]>,
+      any
+    >(
+      `/v3/get-user-tokens/${options.contractId}${query ? `?${queryStr}` : ''}`,
+      {
+        headers: options.skipAuth
+          ? {}
+          : { Authorization: `Bearer ${this.token}` },
+      },
+    );
   };
 
-  public getUserTokensByContract = this.authenticatedMethod<
-    [GetUserTokensByContractParams],
-    CargoApi['_getUserTokensByContract']
-  >(this._getUserTokensByContract);
+  getAllShowcaseItems = async (
+    showcaseId: string,
+    page: string,
+    limit: string,
+  ) => {
+    const params = new URLSearchParams('');
+    if (page) {
+      params.set('page', page);
+    }
+
+    if (limit) {
+      params.set('limit', limit);
+    }
+
+    if (!showcaseId) {
+      throw new Error('getAllShowcaseItems: Showcase ID required');
+    }
+
+    const query = params.toString();
+
+    return this.request<PaginationResponseWithResults<ShowcaseItem[]>, any>(
+      `/v3/showcase/all/${showcaseId}${query ? `?${query}` : ''}`,
+    );
+  };
+
+  getShowcaseItemsForSale = async (options: {
+    page?: string;
+    limit?: string;
+    showcaseId: string;
+    sort?: 'new' | 'high-to-low' | 'low-to-high';
+    filter?: {
+      containsGem?: boolean;
+      builtOnCargo?: boolean;
+      threed?: boolean;
+      audio?: boolean;
+      video?: boolean;
+      image?: boolean;
+    };
+  }) => {
+    if (!options) {
+      throw new Error('getShowcaseItemsForSale: Options required');
+    }
+    if (!options.showcaseId) {
+      throw new Error('getShowcaseItemsForSale: Showcase ID required');
+    }
+    const params = new URLSearchParams('');
+    if (options.filter) {
+      params.set('filter', JSON.stringify(options.filter));
+    }
+    if (options.sort) {
+      params.set('sort', options.sort);
+    }
+    if (options.limit) {
+      params.set('limit', options.limit);
+    }
+    if (options.page) {
+      params.set('page', options.page);
+    }
+    const query = params.toString();
+    return this.request(
+      `/v3/showcase/for-sale/${options.showcaseId}${query ? `?${query}` : ''}`,
+    );
+  };
 
   getResaleItems = async (options: {
     showcaseId?: string;
@@ -467,73 +550,91 @@ export default class CargoApi {
     page?: string;
     limit?: string;
     showcaseId?: string;
+    address?: string;
+    hasTokens?: boolean;
     owned?: boolean;
     cargoContract?: boolean;
     useAuthToken?: boolean;
+    skipAuth?: true;
   }) => {
     const headers: { [key: string]: string } = {
       'Content-Type': 'application/json',
     };
 
-    const { page, limit, showcaseId, owned, cargoContract } = options || {};
+    const {
+      page,
+      limit,
+      showcaseId,
+      owned,
+      cargoContract,
+      address,
+      hasTokens,
+      skipAuth,
+    } = options || {};
 
-    if (this.token) {
+    if (this.token && !skipAuth) {
       headers.Authorization = `Bearer ${this.token}`;
     }
 
-    let query = `?page=${page || '1'}&limit=${limit || '10'}`;
+    const params = new URLSearchParams(
+      `?page=${page || '1'}&limit=${limit || '10'}`,
+    );
 
+    if (hasTokens) {
+      params.set('hasTokens', 'true');
+    }
     if (showcaseId) {
-      query += `&crateId=${showcaseId}`;
+      params.set('crateId', showcaseId);
+    }
+
+    if (address) {
+      params.set('address', address);
     }
 
     if (cargoContract) {
-      query += `&cargoContract=true`;
+      params.set('cargoContract', 'true');
     }
 
     if (owned != null) {
       if (owned === true) {
-        query += '&owned=true';
+        params.set('owned', 'true');
       }
       if (owned === false) {
-        query += '&owned=false';
+        params.set('owned', 'false');
       }
     }
 
     if (options.useAuthToken) {
-      query = addToQuery(query, 'useAuthToken=true');
+      params.set('useAuthToken', 'true');
     }
 
     return this.request<PaginationResponseWithResults<ContractV3>, any>(
-      `/v3/get-contracts${query}`,
+      `/v3/get-contracts?${params.toString()}`,
       {
         headers,
       },
     );
   };
 
-  private _createShowcase = async (crateName: string) => {
-    const response = await this.request<{ showcaseId: string }, any>(
-      '/v3/create-crate',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.token}`,
-        },
-        body: JSON.stringify({
-          name: crateName,
-        }),
+  public createShowcase = async (
+    name: string,
+    description = '',
+    banner: File,
+  ) => {
+    const data = new FormData();
+    data.append('name', name);
+    data.append('description', description);
+    if (banner) {
+      data.append('file', banner);
+    }
+    return this.request<{ showcaseId: string }, any>('/v3/create-crate', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
       },
-    );
-
-    return response;
+      body: data,
+    });
   };
-
-  public createShowcase = this.authenticatedMethod<
-    [string],
-    CargoApi['_createShowcase']
-  >(this._createShowcase);
 
   private _LAB_createConsecutiveSale = async (
     params: CreateConsecutiveSaleParams,
@@ -1356,29 +1457,52 @@ export default class CargoApi {
     );
   });
 
-  modifyShowcase = this.authenticatedMethod(
-    async (
-      showcaseId: string,
-      update: { isPublic?: boolean; resellingEnabled?: boolean; name?: string },
-    ) => {
-      return this.request<
-        {
-          _id: string;
-          name: string;
-          owner: string;
-          public: boolean;
-        },
-        any
-      >(`/v3/modify-showcase/${showcaseId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.token}`,
-        },
-        body: JSON.stringify(update),
-      });
+  public modifyShowcase = async (
+    showcaseId,
+    update: {
+      name?: string;
+      description?: string;
+      file?: File;
     },
-  );
+  ) => {
+    this.checkForToken();
+    const data = new FormData();
+    if (!update) {
+      throw new Error('modifyShowcase: update argument required');
+    }
+
+    const { name, description, file } = update;
+
+    if (name) {
+      data.append('name', name);
+    }
+
+    if (description) {
+      data.append('description', description);
+    }
+
+    if (file) {
+      data.append('file', file);
+    }
+
+    return this.request<
+      {
+        _id: string;
+        name: string;
+        owner: string;
+        description: string;
+        banner: string;
+        bannerUrl: string;
+      },
+      any
+    >(`/v3/modify-showcase/${showcaseId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: data,
+    });
+  };
 
   removeVendor = this.providerMethod(
     this.authenticatedMethod(
@@ -1474,12 +1598,26 @@ export default class CargoApi {
     CargoApi['_getShowcaseVendors']
   >(this._getShowcaseVendors);
 
+  public getAllUserCollectibles = async ({
+    page = '1',
+    limit = '10',
+    address,
+  }) => {
+    const params = new URLSearchParams('');
+    params.set('page', page);
+    params.set('limit', limit);
+    const query = params.toString();
+    return this.request<PaginationResponseWithResults<any>, any>(
+      `/v3/all-collectibles/${address}${query ? `?${query}` : ''}`,
+    );
+  };
+
   public getUserShowcases = async ({
     page,
     limit,
     account,
     useAuth = true,
-  }: GetUserShowcaseArgs) => {
+  }: GetUserShowcaseArgs = {}) => {
     let query = '';
     if (page) {
       query = addToQuery(query, `page=${page}`);
@@ -1502,7 +1640,7 @@ export default class CargoApi {
         },
       };
     }
-    return this.request<PaginationResponseWithResults<UserCrateV3>, any>(
+    return this.request<PaginationResponseWithResults<UserCrateV3[]>, any>(
       `/v3/get-user-crates${query}`,
       params,
     );
