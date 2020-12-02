@@ -23,6 +23,7 @@ import {
   StakedTokensResponse,
   GetUserTokensByContractRespose,
   ShowcaseItem,
+  TCurrencyAddress,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -428,6 +429,14 @@ export default class CargoApi {
     );
   };
 
+  getCurrencies = async () => {
+    return this.request('/v4/currencies');
+  };
+
+  getCurrencyIdByAddress = async address => {
+    return this.request(`v4/currency-by-address/${address}`);
+  };
+
   getResaleItems = async (options: {
     showcaseId?: string;
     seller?: string;
@@ -448,6 +457,7 @@ export default class CargoApi {
       audio?: boolean;
       video?: boolean;
       image?: boolean;
+      currency?: Array<'ether' | TCurrencyAddress>;
     };
   }) => {
     const headers: { [key: string]: string } = {
@@ -858,23 +868,27 @@ export default class CargoApi {
 
   callTxAndPoll = (method: Function) => params =>
     new Promise(async (resolve, reject) => {
-      if (this.cargo.estimateGas) {
-        const gasParams = await this.estimateGas(method, params);
-        params = {
-          ...params,
-          ...gasParams,
-        };
+      try {
+        if (this.cargo.estimateGas) {
+          const gasParams = await this.estimateGas(method, params);
+          params = {
+            ...params,
+            ...gasParams,
+          };
+        }
+        method
+          // @ts-ignore Ignore until we type the method as a web3 contract method
+          .send(params)
+          .once('transactionHash', hash => {
+            this.cargo.pollTx.watch(hash);
+            resolve(hash);
+          })
+          .once('error', e => {
+            reject(e);
+          });
+      } catch (e) {
+        reject(e);
       }
-      method
-        // @ts-ignore Ignore until we type the method as a web3 contract method
-        .send(params)
-        .once('transactionHash', hash => {
-          this.cargo.pollTx.watch(hash);
-          resolve(hash);
-        })
-        .once('error', e => {
-          reject(e);
-        });
     });
 
   cancelSale = this.providerMethod(
