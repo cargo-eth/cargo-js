@@ -3,6 +3,7 @@ import packageJson from '../package.json';
 
 const VALID_CONTRACTS: ContractNames[] = [
   'cargoNft',
+  'orderExecutorV1',
   'nftCreator',
   'erc1155',
   'cargoData',

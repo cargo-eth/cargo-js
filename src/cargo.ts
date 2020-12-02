@@ -33,6 +33,7 @@ declare global {
 
 export type ContractNames =
   | 'cargoNft'
+  | 'orderExecutorV1'
   | 'magicMintUtil'
   | 'erc1155'
   | 'nftCreator'

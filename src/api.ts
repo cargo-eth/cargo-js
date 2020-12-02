@@ -23,6 +23,7 @@ import {
   StakedTokensResponse,
   GetUserTokensByContractRespose,
   ShowcaseItem,
+  TCurrencyAddress,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -428,6 +429,14 @@ export default class CargoApi {
     );
   };
 
+  getCurrencies = async () => {
+    return this.request('/v4/currencies');
+  };
+
+  getCurrencyIdByAddress = async address => {
+    return this.request(`v4/currency-by-address/${address}`);
+  };
+
   getResaleItems = async (options: {
     showcaseId?: string;
     seller?: string;
@@ -448,6 +457,7 @@ export default class CargoApi {
       audio?: boolean;
       video?: boolean;
       image?: boolean;
+      currency?: Array<'ether' | TCurrencyAddress>;
     };
   }) => {
     const headers: { [key: string]: string } = {
@@ -858,23 +868,27 @@ export default class CargoApi {
 
   callTxAndPoll = (method: Function) => params =>
     new Promise(async (resolve, reject) => {
-      if (this.cargo.estimateGas) {
-        const gasParams = await this.estimateGas(method, params);
-        params = {
-          ...params,
-          ...gasParams,
-        };
+      try {
+        if (this.cargo.estimateGas) {
+          const gasParams = await this.estimateGas(method, params);
+          params = {
+            ...params,
+            ...gasParams,
+          };
+        }
+        method
+          // @ts-ignore Ignore until we type the method as a web3 contract method
+          .send(params)
+          .once('transactionHash', hash => {
+            this.cargo.pollTx.watch(hash);
+            resolve(hash);
+          })
+          .once('error', e => {
+            reject(e);
+          });
+      } catch (e) {
+        reject(e);
       }
-      method
-        // @ts-ignore Ignore until we type the method as a web3 contract method
-        .send(params)
-        .once('transactionHash', hash => {
-          this.cargo.pollTx.watch(hash);
-          resolve(hash);
-        })
-        .once('error', e => {
-          reject(e);
-        });
     });
 
   cancelSale = this.providerMethod(
@@ -1314,7 +1328,31 @@ export default class CargoApi {
     },
   );
 
-  purchase = this.providerMethod(
+  purchase = async (saleId: string) => {
+    await this.isEnabledAndHasProvider();
+    const response = await this.request<
+      { args: string[]; web3Params: {} },
+      any
+    >('/v4/purchase', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ saleId }),
+    });
+
+    if (response.err === false) {
+      const contract = await this.cargo.getContractInstance('orderExecutorV1');
+      return this.callTxAndPoll(
+        contract.methods.purchase(...response.data.args),
+      )({
+        from: this.accounts[0],
+        ...response.data.web3Params,
+      });
+    }
+  };
+
+  deprecated_purchase = this.providerMethod(
     async (
       tokenId: string,
       contractAddress: string,
@@ -1367,32 +1405,37 @@ export default class CargoApi {
   sell = this.providerMethod(
     async (
       {
+        currencyId,
         contractAddress,
         tokenId,
+        payees,
+        commisions,
         price,
-        crateId,
         magic,
       }: {
         contractAddress: string;
         tokenId: string;
         price: string;
         crateId?: string;
+        commisions?: number[];
+        payees?: string[];
+        currencyId?: string;
         magic?: boolean;
       },
       unapprovedFn?: () => void,
     ) => {
+      this.checkForToken();
       const [sender] = this.cargo.accounts;
-      const body: { [key: string]: string | boolean } = {
+      const body: { [key: string]: any } = {
         sender,
         contractAddress,
         tokenId,
+        payees,
+        commisions,
+        currencyId,
         price,
-        crateId,
         magic,
       };
-
-      // if magic
-      // check if owner is creator
 
       const contract = await this.cargo.getContractInstance(
         'cargoNft',
@@ -1402,14 +1445,10 @@ export default class CargoApi {
       const returnVal = async () => {
         const headers: { [key: string]: string } = {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.token}`,
         };
-        if (!this.token) {
-          body.signature = await this.getSignature();
-        } else {
-          headers.Authorization = `Bearer ${this.token}`;
-        }
 
-        return this.request('/v3/sell', {
+        return this.request('/v4/sell', {
           method: 'POST',
           body: JSON.stringify(body),
           headers,
@@ -1425,19 +1464,19 @@ export default class CargoApi {
         }
       }
 
-      const { address: cargoSellAddress } = await this.cargo.getContract(
-        'cargoSell',
+      const { address: orderExecutorV1 } = await this.cargo.getContract(
+        'orderExecutorV1',
       );
 
       const isApproved = await contract.methods
-        .isApprovedForAll(sender, cargoSellAddress)
+        .isApprovedForAll(sender, orderExecutorV1)
         .call();
 
       if (!isApproved) {
         if (unapprovedFn) {
           unapprovedFn();
         }
-        await contract.methods.setApprovalForAll(cargoSellAddress, true).send({
+        await contract.methods.setApprovalForAll(orderExecutorV1, true).send({
           from: this.accounts[0],
         });
       }
@@ -1830,6 +1869,19 @@ export default class CargoApi {
       method: 'POST',
       body: JSON.stringify(body),
       headers,
+    });
+  };
+
+  public approveErc20 = async (
+    amount: string,
+    address: string,
+    operator: string,
+    web3TxParams?: any,
+  ) => {
+    const erc20 = await this.cargo.getContractInstance('erc20', address);
+    return this.callTxAndPoll(erc20.methods.approve(operator, amount))({
+      from: this.cargo.accounts[0],
+      ...web3TxParams,
     });
   };
 

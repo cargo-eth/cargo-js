@@ -10,6 +10,8 @@ export type TokenMetadata = {
   edition?: string;
 };
 
+export type TCurrencyAddress = string;
+
 export type Token = {
   tokenURI: string;
   owner: string;
