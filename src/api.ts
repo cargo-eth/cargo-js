@@ -1409,7 +1409,7 @@ export default class CargoApi {
         contractAddress,
         tokenId,
         payees,
-        commisions,
+        commissions,
         price,
         magic,
       }: {
@@ -1431,7 +1431,7 @@ export default class CargoApi {
         contractAddress,
         tokenId,
         payees,
-        commisions,
+        commissions,
         currencyId,
         price,
         magic,
