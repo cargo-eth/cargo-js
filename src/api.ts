@@ -805,7 +805,7 @@ export default class CargoApi {
     return response;
   });
 
-  register = this.providerMethod(async (email: string, username: string) => {
+  register = this.providerMethod(async (email?: string, username?: string) => {
     const signature = await this.getSignature();
     const [account] = this.cargo.accounts;
     const response = await this.request<{ token: string }, any>(
@@ -1417,7 +1417,7 @@ export default class CargoApi {
         tokenId: string;
         price: string;
         crateId?: string;
-        commisions?: number[];
+        commissions?: number[];
         payees?: string[];
         currencyId?: string;
         magic?: boolean;
