@@ -2,6 +2,13 @@ export * from './ResaleItemWithMetadata';
 export * from './TokenMetadata';
 export * from './ResaleItemGroups';
 
+export type Royalty = {
+  contractAddress: string;
+  tokenId: string;
+  payees: string[];
+  commissions: number[];
+};
+
 export type TokenMetadata = {
   name: string;
   description: string;

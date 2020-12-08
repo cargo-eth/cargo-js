@@ -24,6 +24,7 @@ import {
   GetUserTokensByContractRespose,
   ShowcaseItem,
   TCurrencyAddress,
+  Royalty,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -1111,6 +1112,37 @@ export default class CargoApi {
       },
     ),
   );
+
+  public getRoyalty = async (params: {
+    contractAddress: string;
+    tokenId: string;
+  }) => {
+    return this.request<{ royalty: Royalty }, any>('/v4/get-royalty', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+  };
+
+  public addRoyalty = async (params: {
+    contractAddress: string;
+    tokenId: string;
+    payees: string[];
+    commissions: string[];
+  }) => {
+    this.checkForToken();
+
+    return this.request<{ success: true }, any>('/v4/add-royalty', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: JSON.stringify(params),
+    });
+  };
 
   private _createContract = async (
     name: string,
