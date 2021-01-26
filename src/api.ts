@@ -2027,4 +2027,30 @@ export default class CargoApi {
 
     return res.data.balance;
   };
+
+  // public purchase1155 = async (saleId: string) => {
+  //   const res = await this.request<
+  //     ArgsResponse & { web3Params: Record<any, any> },
+  //     any
+  //   >('/v4/purchase-1155', {
+  //     method: 'POST',
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: JSON.stringify({ saleId }),
+  //   });
+
+  //   if (res.err === true) {
+  //     throw new Error(JSON.stringify(res));
+  //   }
+
+  //   const contract = await this.cargo.getContractInstance(
+  //     'orderExecutor1155V1',
+  //   );
+
+  //   return this.callTxAndPoll(contract.methods.purchase(...res.data.args))({
+  //     from: this.cargo.accounts[0],
+  //     ...res.data.web3Params,
+  //   });
+  // };
 }

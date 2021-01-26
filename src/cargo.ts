@@ -32,6 +32,7 @@ declare global {
 }
 
 export type ContractNames =
+  | 'orderExecutor1155V1'
   | 'cargoNft'
   | 'orderExecutorV1'
   | 'magicMintUtil'
@@ -45,7 +46,8 @@ export type ContractNames =
   | 'cargoGemsStaking'
   | 'erc20'
   | 'cargoGems'
-  | 'cargoVendor';
+  | 'cargoVendor'
+  | 'nftFarm';
 
 type ContractObject = {
   name: ContractNames;

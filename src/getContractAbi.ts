@@ -2,8 +2,10 @@ import { ContractNames } from './cargo';
 import packageJson from '../package.json';
 
 const VALID_CONTRACTS: ContractNames[] = [
+  'orderExecutor1155V1',
   'cargoNft',
   'orderExecutorV1',
+  'orderExecutor1155V1',
   'nftCreator',
   'erc1155',
   'cargoData',
@@ -16,6 +18,7 @@ const VALID_CONTRACTS: ContractNames[] = [
   'cargoGemsStaking',
   'erc20',
   'cargoGems',
+  'nftFarm',
 ];
 
 const CARGO_LOCAL_STORAGE_KEY = `__CARGO_LS_KEY__${packageJson.version}`;
