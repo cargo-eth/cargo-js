@@ -1360,7 +1360,7 @@ export default class CargoApi {
     },
   );
 
-  purchase = async (saleId: string) => {
+  purchase = async (saleId: string, web3Params: any) => {
     await this.isEnabledAndHasProvider();
     const response = await this.request<
       { args: string[]; web3Params: {} },
@@ -1380,6 +1380,7 @@ export default class CargoApi {
       )({
         from: this.accounts[0],
         ...response.data.web3Params,
+        ...web3Params,
       });
     }
   };
@@ -1455,6 +1456,7 @@ export default class CargoApi {
         magic?: boolean;
       },
       unapprovedFn?: () => void,
+      web3Params?: any,
     ) => {
       this.checkForToken();
       const [sender] = this.cargo.accounts;
@@ -1510,6 +1512,7 @@ export default class CargoApi {
         }
         await contract.methods.setApprovalForAll(orderExecutorV1, true).send({
           from: this.accounts[0],
+          ...web3Params,
         });
       }
       return returnVal();
@@ -1853,6 +1856,7 @@ export default class CargoApi {
       contractAddress: string;
     },
     unapprovedFn: () => any,
+    web3Params: any,
   ) => {
     await this.isEnabledAndHasProvider();
 
@@ -1875,6 +1879,7 @@ export default class CargoApi {
       }
       await contract.methods.setApprovalForAll(cargoSellAddress, true).send({
         from: this.accounts[0],
+        ...web3Params,
       });
     }
 
