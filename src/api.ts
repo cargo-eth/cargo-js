@@ -25,6 +25,7 @@ import {
   ShowcaseItem,
   TCurrencyAddress,
   Royalty,
+  Chain,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -647,139 +648,6 @@ export default class CargoApi {
     });
   };
 
-  private _LAB_createConsecutiveSale = async (
-    params: CreateConsecutiveSaleParams,
-    unapprovedFn?: () => void,
-  ) => {
-    const { address: cargoSellAddress } = await this.cargo.getContract(
-      'cargoSell',
-    );
-    const contract = await this.cargo.getContractInstance(
-      'cargoNft',
-      params.contractAddress,
-    );
-
-    const isApproved = await contract.methods
-      .isApprovedForAll(this.accounts[0], cargoSellAddress)
-      .call();
-
-    if (!isApproved) {
-      if (unapprovedFn) {
-        unapprovedFn();
-      }
-      await contract.methods.setApprovalForAll(cargoSellAddress, true).send({
-        from: this.accounts[0],
-      });
-    }
-
-    return this.request<
-      {
-        _id: string;
-        seller: string;
-        contract: string;
-        pricePerItem: string;
-        toTokenId: string;
-        balance: string;
-        crate: string;
-      },
-      any
-    >('/v3/create-consecutive-sale', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.token}`,
-      },
-      body: JSON.stringify(params),
-    });
-  };
-
-  LAB_createConsecutiveSale = this.providerMethod<
-    [CreateConsecutiveSaleParams, () => void],
-    CargoApi['_LAB_createConsecutiveSale']
-  >(this.authenticatedMethod(this._LAB_createConsecutiveSale));
-
-  private _LAB_consecutivePurchase = async (
-    params: ConsecutivePurchaseParams,
-  ) => {
-    const response = await this.request<ConsecutivePurchaseReturn, any>(
-      `/v3/consecutive-purchase`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-      },
-    );
-
-    if (response.err === false) {
-      const contract = await this.cargo.getContractInstance('cargoSell');
-      const args = response.data.slice(0, response.data.length - 1);
-      const sendParams = response.data[response.data.length - 1];
-      return this.callTxAndPoll(
-        contract.methods.consecutivePurchaseInCrate(...args),
-      )(sendParams);
-    } else {
-      throw new Error(JSON.stringify(response.errorData));
-    }
-  };
-
-  LAB_consecutivePurchase = this.providerMethod<
-    [ConsecutivePurchaseParams],
-    CargoApi['_LAB_consecutivePurchase']
-  >(this._LAB_consecutivePurchase);
-
-  private _getShowcaseApplicationFee = async (showcaseId: string) => {
-    const cargoData = await this.cargo.getContractInstance('cargoData');
-    return cargoData.methods
-      .crateApplicationFee(this.cargo.web3.utils.utf8ToHex(showcaseId))
-      .call();
-  };
-
-  getShowcaseApplicationFee = this.providerMethod<
-    [ShowcaseId],
-    CargoApi['_getShowcaseApplicationFee']
-  >(this._getShowcaseApplicationFee);
-
-  setShowcaseApplicationFee = this.providerMethod(
-    this.authenticatedMethod(async (fee: number, crateId: string) => {
-      if (window.isNaN(fee)) {
-        throw new Error(`${fee} is not a valid argument`);
-      }
-      if (!crateId) {
-        throw new Error(`"${crateId}" is not a valid crate ID`);
-      }
-      const response = await this.request<ArgsResponse, any>(
-        '/v3/set-crate-application-fee',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.token}`,
-          },
-          body: JSON.stringify({
-            fee,
-            crateId,
-          }),
-        },
-      );
-
-      if (response.err === true) {
-        throw new Error(JSON.stringify(response));
-      }
-
-      const { args } = response.data;
-
-      const contract = await this.cargo.getContractInstance('cargoSell');
-
-      return this.callTxAndPoll(
-        contract.methods.setCrateApplicationFee(...args),
-      )({
-        from: this.cargo.accounts[0],
-      });
-    }),
-  );
-
   authenticate = this.providerMethod(async () => {
     const signature = await this.getSignature();
     const [account] = this.cargo.accounts;
@@ -1144,12 +1012,18 @@ export default class CargoApi {
     });
   };
 
-  private _createContract = async (
+  public createContract = async (
     name: string,
+    network: Chain,
     symbol?: string,
     crateId?: string,
     web3TxParams?: any,
   ) => {
+    if (!network || !name) {
+      throw new Error('Cargo JS - createContract: Invalid arguments');
+    }
+    await this.isEnabledAndHasProvider();
+
     // Adding this here instead of using this.authenticatedMethod
     // because of optional parameters
     this.checkForToken();
@@ -1178,11 +1052,15 @@ export default class CargoApi {
 
     const cargoAssetContract = await this.cargo.getContractInstance(
       'cargoAsset',
+      network,
     );
 
     const price = await cargoAssetContract.methods.getPrice('create').call();
 
-    const contract = await this.cargo.getContractInstance('nftCreator');
+    const contract = await this.cargo.getContractInstance(
+      'nftCreator',
+      network,
+    );
 
     return this.callTxAndPoll(contract.methods.createContract(...args))({
       from: this.cargo.accounts[0],
@@ -1206,11 +1084,6 @@ export default class CargoApi {
   public orders = this.authenticatedMethod<[OrderParams], CargoApi['_orders']>(
     this._orders,
   );
-
-  public createContract = this.providerMethod<
-    [string, string?, string?],
-    CargoApi['_createContract']
-  >(this._createContract);
 
   mint = this.providerMethod(
     async (
@@ -2028,29 +1901,18 @@ export default class CargoApi {
     return res.data.balance;
   };
 
-  // public purchase1155 = async (saleId: string) => {
-  //   const res = await this.request<
-  //     ArgsResponse & { web3Params: Record<any, any> },
-  //     any
-  //   >('/v4/purchase-1155', {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: JSON.stringify({ saleId }),
-  //   });
-
-  //   if (res.err === true) {
-  //     throw new Error(JSON.stringify(res));
-  //   }
-
-  //   const contract = await this.cargo.getContractInstance(
-  //     'orderExecutor1155V1',
-  //   );
-
-  //   return this.callTxAndPoll(contract.methods.purchase(...res.data.args))({
-  //     from: this.cargo.accounts[0],
-  //     ...res.data.web3Params,
-  //   });
-  // };
+  public registerWallet = async (walletId: string, chain: Chain) => {
+    const signature = await this.getSignature();
+    return this.request(`/v5/register-wallet`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chain,
+        walletId,
+        signature,
+      }),
+    });
+  };
 }

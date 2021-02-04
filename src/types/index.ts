@@ -17,6 +17,8 @@ export type TokenMetadata = {
   edition?: string;
 };
 
+export type Chain = 'eth' | 'xdai';
+
 export type TCurrencyAddress = string;
 
 export type Token = {
