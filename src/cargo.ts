@@ -131,7 +131,7 @@ class Cargo extends Emitter {
 
   getContractInstance?: (
     contract: ContractNames,
-    network: Chain,
+    network?: Chain,
     setAddress?: string,
   ) => Promise<typeof Contract>;
 

@@ -15,10 +15,6 @@ import {
   ContractV3,
   GetShowcaseByIdResponse,
   GetTokensByContractResponse,
-  ShowcaseId,
-  CreateConsecutiveSaleParams,
-  ConsecutivePurchaseParams,
-  ConsecutivePurchaseReturn,
   SellErc1155Body,
   StakedTokensResponse,
   GetUserTokensByContractRespose,
@@ -1016,20 +1012,16 @@ export default class CargoApi {
     name: string,
     network: Chain,
     symbol?: string,
-    crateId?: string,
     web3TxParams?: any,
   ) => {
     if (!network || !name) {
       throw new Error('Cargo JS - createContract: Invalid arguments');
     }
     await this.isEnabledAndHasProvider();
-
-    // Adding this here instead of using this.authenticatedMethod
-    // because of optional parameters
     this.checkForToken();
 
     const response = await this.request<ArgsResponse, any>(
-      '/v3/create-contract',
+      '/v5/create-contract',
       {
         method: 'POST',
         headers: {
@@ -1039,7 +1031,6 @@ export default class CargoApi {
         body: JSON.stringify({
           name,
           symbol,
-          crateId,
         }),
       },
     );
@@ -1050,13 +1041,6 @@ export default class CargoApi {
 
     const { args } = response.data;
 
-    const cargoAssetContract = await this.cargo.getContractInstance(
-      'cargoAsset',
-      network,
-    );
-
-    const price = await cargoAssetContract.methods.getPrice('create').call();
-
     const contract = await this.cargo.getContractInstance(
       'nftCreator',
       network,
@@ -1064,7 +1048,6 @@ export default class CargoApi {
 
     return this.callTxAndPoll(contract.methods.createContract(...args))({
       from: this.cargo.accounts[0],
-      value: price,
       ...web3TxParams,
     });
   };
@@ -1084,6 +1067,48 @@ export default class CargoApi {
   public orders = this.authenticatedMethod<[OrderParams], CargoApi['_orders']>(
     this._orders,
   );
+
+  wizardMint = async (
+    sessionId: string,
+    contractAddress: string,
+    toAddress: string,
+    web3TxParams?: any,
+  ) => {
+    await this.isEnabledAndHasProvider();
+    this.checkForToken();
+    const res = await this.request<{ args: string[]; chain: Chain }, any>(
+      '/v5/wizard/mint',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      },
+    );
+
+    if (res.err === true) {
+      throw new Error(JSON.stringify(res.errorData));
+    }
+
+    const contract = await this.cargo.getContractInstance(
+      'cargoNft',
+      res.data.chain,
+      contractAddress,
+    );
+
+    const fn = contract.methods.batchMint(
+      res.data.amount,
+      toAddress,
+      ...res.data.args,
+    );
+
+    return this.callTxAndPoll(fn)({
+      from: this.cargo.accounts[0],
+      ...web3TxParams,
+    });
+  };
 
   mint = this.providerMethod(
     async (
