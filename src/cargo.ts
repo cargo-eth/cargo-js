@@ -127,7 +127,10 @@ class Cargo extends Emitter {
 
   utils?: Utils;
 
-  getContract?: (contract: ContractNames) => Promise<ContractData>;
+  getContract?: (
+    contract: ContractNames,
+    chain: Chain,
+  ) => Promise<ContractData>;
 
   getContractInstance?: (
     contract: ContractNames,

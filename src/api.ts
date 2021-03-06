@@ -438,6 +438,7 @@ export default class CargoApi {
   getResaleItems = async (options: {
     showcaseId?: string;
     seller?: string;
+    chain?: Chain;
     collectionId?: string;
     collectionAddress?: string;
     page?: string;
@@ -473,6 +474,7 @@ export default class CargoApi {
       collectionAddress,
       sort,
       filter,
+      chain,
       seller,
     } = options || {};
 
@@ -494,6 +496,10 @@ export default class CargoApi {
 
     if (seller) {
       query = addToQuery(query, `seller=${seller}`);
+    }
+
+    if (chain) {
+      query = addToQuery(query, `chain=${chain}`);
     }
 
     if (filter) {
@@ -1258,7 +1264,7 @@ export default class CargoApi {
     },
   );
 
-  purchase = async (saleId: string) => {
+  purchase = async (saleId: string, chain: Chain) => {
     await this.isEnabledAndHasProvider();
     const response = await this.request<
       { args: string[]; web3Params: {} },
@@ -1272,7 +1278,10 @@ export default class CargoApi {
     });
 
     if (response.err === false) {
-      const contract = await this.cargo.getContractInstance('orderExecutorV1');
+      const contract = await this.cargo.getContractInstance(
+        'orderExecutorV1',
+        chain,
+      );
       return this.callTxAndPoll(
         contract.methods.purchase(...response.data.args),
       )({
@@ -1335,6 +1344,7 @@ export default class CargoApi {
   sell = this.providerMethod(
     async (
       {
+        chain,
         currencyId,
         contractAddress,
         tokenId,
@@ -1343,6 +1353,7 @@ export default class CargoApi {
         price,
         magic,
       }: {
+        chain: Chain;
         contractAddress: string;
         tokenId: string;
         price: string;
@@ -1369,6 +1380,7 @@ export default class CargoApi {
 
       const contract = await this.cargo.getContractInstance(
         'cargoNft',
+        chain,
         contractAddress,
       );
 
@@ -1396,6 +1408,7 @@ export default class CargoApi {
 
       const { address: orderExecutorV1 } = await this.cargo.getContract(
         'orderExecutorV1',
+        chain,
       );
 
       const isApproved = await contract.methods
