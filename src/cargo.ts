@@ -36,6 +36,7 @@ export type ContractNames =
   | 'orderExecutor1155V1'
   | 'cargoNft'
   | 'orderExecutorV1'
+  | 'orderExecutorV2'
   | 'magicMintUtil'
   | 'erc1155'
   | 'nftCreator'

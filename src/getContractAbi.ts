@@ -6,6 +6,7 @@ const VALID_CONTRACTS: ContractNames[] = [
   'orderExecutor1155V1',
   'cargoNft',
   'orderExecutorV1',
+  'orderExecutorV2',
   'orderExecutor1155V1',
   'nftCreator',
   'erc1155',

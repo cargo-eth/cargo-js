@@ -1267,7 +1267,11 @@ export default class CargoApi {
   purchase = async (saleId: string, chain: Chain) => {
     await this.isEnabledAndHasProvider();
     const response = await this.request<
-      { args: string[]; web3Params: {} },
+      {
+        args: string[];
+        web3Params: {};
+        contract: 'orderExecutorV1' | 'orderExecutorV2';
+      },
       any
     >('/v4/purchase', {
       method: 'POST',
@@ -1279,7 +1283,7 @@ export default class CargoApi {
 
     if (response.err === false) {
       const contract = await this.cargo.getContractInstance(
-        'orderExecutorV1',
+        response.data?.contract ?? 'orderExecutorV1',
         chain,
       );
       return this.callTxAndPoll(
@@ -1406,20 +1410,20 @@ export default class CargoApi {
         }
       }
 
-      const { address: orderExecutorV1 } = await this.cargo.getContract(
-        'orderExecutorV1',
+      const { address: orderExecutorV2 } = await this.cargo.getContract(
+        'orderExecutorV2',
         chain,
       );
 
       const isApproved = await contract.methods
-        .isApprovedForAll(sender, orderExecutorV1)
+        .isApprovedForAll(sender, orderExecutorV2)
         .call();
 
       if (!isApproved) {
         if (unapprovedFn) {
           unapprovedFn();
         }
-        await contract.methods.setApprovalForAll(orderExecutorV1, true).send({
+        await contract.methods.setApprovalForAll(orderExecutorV2, true).send({
           from: this.accounts[0],
         });
       }
