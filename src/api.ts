@@ -22,6 +22,7 @@ import {
   TCurrencyAddress,
   Royalty,
   Chain,
+  SaveNft,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -298,7 +299,7 @@ export default class CargoApi {
       string,
       {
         [tokenId: string]: Object;
-      }
+      },
     ],
     CargoApi['_bulkMetadataUpdate']
   >(this._bulkMetadataUpdate);
@@ -431,7 +432,7 @@ export default class CargoApi {
     return this.request('/v4/currencies');
   };
 
-  getCurrencyIdByAddress = async address => {
+  getCurrencyIdByAddress = async (address) => {
     return this.request(`v4/currency-by-address/${address}`);
   };
 
@@ -707,8 +708,8 @@ export default class CargoApi {
     const gasPrice = await fetch(
       'https://ethgasstation.info/api/ethgasAPI.json?api-key=7eb1f2d4c3e80bdf25b5385ab725e644819f3709af412e228a26f81e13d2',
     )
-      .then(res => res.json())
-      .then(json => {
+      .then((res) => res.json())
+      .then((json) => {
         return json.fast / 10;
       });
 
@@ -737,7 +738,7 @@ export default class CargoApi {
     };
   };
 
-  callTxAndPoll = (method: Function) => params =>
+  callTxAndPoll = (method: Function) => (params) =>
     new Promise(async (resolve, reject) => {
       try {
         if (this.cargo.estimateGas) {
@@ -750,11 +751,11 @@ export default class CargoApi {
         method
           // @ts-ignore Ignore until we type the method as a web3 contract method
           .send(params)
-          .once('transactionHash', hash => {
+          .once('transactionHash', (hash) => {
             this.cargo.pollTx.watch(hash);
             resolve(hash);
           })
-          .once('error', e => {
+          .once('error', (e) => {
             reject(e);
           });
       } catch (e) {
@@ -909,7 +910,7 @@ export default class CargoApi {
         commission: number,
         web3TxParams?: any,
       ) => {
-        const isValidCommission = commission => 0 && commission <= 1;
+        const isValidCommission = (commission) => 0 && commission <= 1;
         if (!isValidCommission) {
           throw new Error('Commission must be a number between 0 and 1');
         }
@@ -1074,6 +1075,107 @@ export default class CargoApi {
     this._orders,
   );
 
+  createMintingSession = async (projectId: string) => {
+    await this.isEnabledAndHasProvider();
+    this.checkForToken();
+    const res = await this.request<{ sessionId: string }, any>(
+      '/v5/wizard/create-session',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({ contractId: projectId }),
+      },
+    );
+
+    if (res.err === true) {
+      throw new Error(JSON.stringify(res));
+    }
+
+    return res.data.sessionId;
+  };
+
+  getMintingSession = async (sessionId: string) => {
+    const res = await this.request('/v5/wizard/get-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: JSON.stringify({ sessionId }),
+    });
+
+    if (res.err === true) {
+      throw new Error(JSON.stringify(res));
+    }
+
+    return res.data;
+  };
+
+  saveNft = async (
+    sessionId: string,
+    nfts: SaveNft[],
+    onSaved?: (id: string) => void,
+    onError?: (id: string, reason: string) => void,
+  ) => {
+    await this.isEnabledAndHasProvider();
+    this.checkForToken();
+    for (let i = 0; i < nfts.length; i++) {
+      const nft = nfts[i];
+      const fn = async () => {
+        const formData = new FormData();
+        formData.append('sessionId', sessionId);
+        formData.append('uuid', nft.id);
+        formData.append('name', nft.name);
+        formData.append('description', nft.description);
+        formData.append('amount', nft.amount);
+        formData.append('metadata', nft.metadata);
+        if (nft.toDelete) {
+          formData.append('toDelete', JSON.stringify(nft.toDelete));
+        }
+        if (nft.previewImage) {
+          formData.append(
+            'previewImage',
+            nft.previewImage,
+            nft.previewImage.name,
+          );
+        }
+        if (nft.displayContent) {
+          formData.append('displayContentType', nft.displayContent.type);
+        }
+        if (nft.displayContent) {
+          nft.displayContent.files.forEach((file) => {
+            formData.append('displayContent', file, file.name);
+          });
+        }
+        if (Array.isArray(nft.files)) {
+          nft.files.forEach((file) => {
+            formData.append('file', file, file.name);
+          });
+        }
+        const res = await this.request<any, any>('/v5/wizard/save', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+          },
+        });
+        if (!res.err && onSaved) {
+          onSaved(nft.id);
+        } else if (res.err === true) {
+          if (res.errorData?.message === 'over storage limit') {
+            onError(nft.id, 'over storage limit');
+          } else {
+            onError(nft.id, 'unknown');
+          }
+        }
+      };
+      await fn();
+    }
+  };
+
   wizardMint = async (
     sessionId: string,
     contractAddress: string,
@@ -1082,17 +1184,17 @@ export default class CargoApi {
   ) => {
     await this.isEnabledAndHasProvider();
     this.checkForToken();
-    const res = await this.request<{ args: string[]; chain: Chain }, any>(
-      '/v5/wizard/mint',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.token}`,
-        },
-        body: JSON.stringify({ sessionId }),
+    const res = await this.request<
+      { args: string[]; chain: Chain; amount: string },
+      any
+    >('/v5/wizard/mint', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`,
       },
-    );
+      body: JSON.stringify({ sessionId }),
+    });
 
     if (res.err === true) {
       throw new Error(JSON.stringify(res.errorData));
@@ -1115,95 +1217,6 @@ export default class CargoApi {
       ...web3TxParams,
     });
   };
-
-  mint = this.providerMethod(
-    async (
-      {
-        contractAddress,
-        amount,
-        to,
-        name,
-        description,
-        metadata,
-        previewImage,
-        files,
-        displayContent,
-        method = 'batchMint',
-      }: MintParams,
-      web3TxParams?: any,
-    ) => {
-      this.checkForToken();
-      const cargoData = await this.cargo.getContractInstance('cargoData');
-      const isCargoContract = await cargoData.methods
-        .verifyContract(contractAddress)
-        .call();
-
-      if (!isCargoContract) {
-        throw new Error('invalid-contract');
-      }
-
-      const formData = new FormData();
-      formData.append('contractAddress', contractAddress);
-      formData.append('amount', amount);
-      if (name) {
-        formData.append('name', name);
-      }
-      if (description) {
-        formData.append('description', description);
-      }
-      if (metadata) {
-        formData.append('metadata', JSON.stringify(metadata));
-      }
-      if (previewImage) {
-        formData.append('previewImage', previewImage);
-      }
-      if (displayContent) {
-        formData.append('displayContentType', displayContent.type);
-        displayContent.files.forEach(file => {
-          formData.append('displayContent', file);
-        });
-      }
-      if (Array.isArray(files)) {
-        files.forEach(file => {
-          formData.append('file', file);
-        });
-      }
-
-      const response = await this.request<ArgsResponse, any>('/v3/mint', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-        },
-        body: formData,
-      });
-
-      if (response.err === true) {
-        throw new Error(JSON.stringify(response));
-      }
-
-      const { args } = response.data;
-
-      const contract = await this.cargo.getContractInstance(
-        'cargoNft',
-        contractAddress,
-      );
-
-      const fnArgs = [];
-
-      if (method === 'mint') {
-        fnArgs.push(to, ...args);
-      } else {
-        fnArgs.push(amount, to, ...args);
-      }
-
-      const fn = contract.methods[method](...fnArgs);
-
-      return this.callTxAndPoll(fn)({
-        from: this.cargo.accounts[0],
-        ...web3TxParams,
-      });
-    },
-  );
 
   transferCollectible = this.providerMethod(
     async (
@@ -1254,9 +1267,15 @@ export default class CargoApi {
   );
 
   burnCollectible = this.providerMethod(
-    async (contractAddress: string, tokenId: string, web3TxParams?: any) => {
+    async (
+      contractAddress: string,
+      tokenId: string,
+      chain?: Chain,
+      web3TxParams?: any,
+    ) => {
       const contract = await this.cargo.getContractInstance(
         'cargoNft',
+        chain,
         contractAddress,
       );
       return this.callTxAndPoll(contract.methods.burn(tokenId))({
@@ -1733,7 +1752,7 @@ export default class CargoApi {
           string[],
           string,
           [string, string, string],
-          string
+          string,
         ];
         values: { from: string; value: string };
       },
@@ -1762,12 +1781,14 @@ export default class CargoApi {
       showcaseId,
       price, // wei
       contractAddress,
+      chain,
     }: {
       ids: string[];
       values: string[];
       price: string;
       showcaseId?: string;
       contractAddress: string;
+      chain: Chain;
     },
     unapprovedFn: () => any,
   ) => {
@@ -1775,10 +1796,12 @@ export default class CargoApi {
 
     const { address: cargoSellAddress } = await this.cargo.getContract(
       'cargoSell',
+      chain,
     );
 
     const contract = await this.cargo.getContractInstance(
       'erc1155',
+      chain,
       contractAddress,
     );
 
@@ -1825,9 +1848,10 @@ export default class CargoApi {
     amount: string,
     address: string,
     operator: string,
+    chain: Chain,
     web3TxParams?: any,
   ) => {
-    const erc20 = await this.cargo.getContractInstance('erc20', address);
+    const erc20 = await this.cargo.getContractInstance('erc20', chain, address);
     return this.callTxAndPoll(erc20.methods.approve(operator, amount))({
       from: this.cargo.accounts[0],
       ...web3TxParams,
@@ -1835,8 +1859,8 @@ export default class CargoApi {
   };
 
   public approveGems = async (amount: string, web3TxParams?: any) => {
-    const staking = await this.cargo.getContract('cargoGemsStaking');
-    const gems = await this.cargo.getContractInstance('cargoGems');
+    const staking = await this.cargo.getContract('cargoGemsStaking', 'eth');
+    const gems = await this.cargo.getContractInstance('cargoGems', 'eth');
     return this.callTxAndPoll(gems.methods.approve(staking.address, amount))({
       from: this.cargo.accounts[0],
       ...web3TxParams,
@@ -1943,20 +1967,5 @@ export default class CargoApi {
     }
 
     return res.data.balance;
-  };
-
-  public registerWallet = async (walletId: string, chain: Chain) => {
-    const signature = await this.getSignature();
-    return this.request(`/v5/register-wallet`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chain,
-        walletId,
-        signature,
-      }),
-    });
   };
 }

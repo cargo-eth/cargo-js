@@ -243,7 +243,7 @@ export type ConsecutivePurchaseReturn = [
   CPRT['sellerAddress'],
   [CPRT['saleId'], CPRT['nonce'], CPRT['crateID']],
   CPRT['signature'],
-  { from: string; value: string }
+  { from: string; value: string },
 ];
 
 export type SellErc1155Body = {
@@ -254,4 +254,24 @@ export type SellErc1155Body = {
   crateId?: string;
   sender: string;
   signature?: string;
+};
+
+export type DisplayContentType = 'video' | 'audio' | '3D';
+
+export type SaveNft = {
+  id: string;
+  name: string;
+  description: string;
+  amount: string;
+  toDelete?: {
+    hash: string;
+    type: 'locked' | 'displayContent' | 'previewImage';
+  }[];
+  metadata: string;
+  files: File[];
+  previewImage: File | void;
+  displayContent?: {
+    type: DisplayContentType;
+    files: File[];
+  };
 };
