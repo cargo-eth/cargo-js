@@ -1211,6 +1211,7 @@ export default class CargoApi {
       tokenId: string,
       to: string,
       magic?: boolean,
+      chain?: Chain,
       web3TxParams?: any,
     ) => {
       if (magic) {
@@ -1238,6 +1239,7 @@ export default class CargoApi {
       } else {
         const contract = await this.cargo.getContractInstance(
           'cargoNft',
+          chain,
           contractAddress,
         );
         return this.callTxAndPoll(
