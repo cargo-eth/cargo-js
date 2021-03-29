@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - xDai support
 - Minting wizard
 
+## [5.1.1]
+
+- Add Web3 params to purchase
+
 ## [5.1.0]
 
 - Add royalty function
