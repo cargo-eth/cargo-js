@@ -15,16 +15,14 @@ import {
   ContractV3,
   GetShowcaseByIdResponse,
   GetTokensByContractResponse,
-  ShowcaseId,
-  CreateConsecutiveSaleParams,
-  ConsecutivePurchaseParams,
-  ConsecutivePurchaseReturn,
   SellErc1155Body,
   StakedTokensResponse,
   GetUserTokensByContractRespose,
   ShowcaseItem,
   TCurrencyAddress,
   Royalty,
+  Chain,
+  SaveNft,
 } from './types';
 import { Order, OrderParams } from './types/Order';
 
@@ -301,7 +299,7 @@ export default class CargoApi {
       string,
       {
         [tokenId: string]: Object;
-      }
+      },
     ],
     CargoApi['_bulkMetadataUpdate']
   >(this._bulkMetadataUpdate);
@@ -434,13 +432,14 @@ export default class CargoApi {
     return this.request('/v4/currencies');
   };
 
-  getCurrencyIdByAddress = async address => {
+  getCurrencyIdByAddress = async (address) => {
     return this.request(`v4/currency-by-address/${address}`);
   };
 
   getResaleItems = async (options: {
     showcaseId?: string;
     seller?: string;
+    chain?: Chain;
     collectionId?: string;
     collectionAddress?: string;
     page?: string;
@@ -476,6 +475,7 @@ export default class CargoApi {
       collectionAddress,
       sort,
       filter,
+      chain,
       seller,
     } = options || {};
 
@@ -497,6 +497,10 @@ export default class CargoApi {
 
     if (seller) {
       query = addToQuery(query, `seller=${seller}`);
+    }
+
+    if (chain) {
+      query = addToQuery(query, `chain=${chain}`);
     }
 
     if (filter) {
@@ -647,139 +651,6 @@ export default class CargoApi {
     });
   };
 
-  private _LAB_createConsecutiveSale = async (
-    params: CreateConsecutiveSaleParams,
-    unapprovedFn?: () => void,
-  ) => {
-    const { address: cargoSellAddress } = await this.cargo.getContract(
-      'cargoSell',
-    );
-    const contract = await this.cargo.getContractInstance(
-      'cargoNft',
-      params.contractAddress,
-    );
-
-    const isApproved = await contract.methods
-      .isApprovedForAll(this.accounts[0], cargoSellAddress)
-      .call();
-
-    if (!isApproved) {
-      if (unapprovedFn) {
-        unapprovedFn();
-      }
-      await contract.methods.setApprovalForAll(cargoSellAddress, true).send({
-        from: this.accounts[0],
-      });
-    }
-
-    return this.request<
-      {
-        _id: string;
-        seller: string;
-        contract: string;
-        pricePerItem: string;
-        toTokenId: string;
-        balance: string;
-        crate: string;
-      },
-      any
-    >('/v3/create-consecutive-sale', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.token}`,
-      },
-      body: JSON.stringify(params),
-    });
-  };
-
-  LAB_createConsecutiveSale = this.providerMethod<
-    [CreateConsecutiveSaleParams, () => void],
-    CargoApi['_LAB_createConsecutiveSale']
-  >(this.authenticatedMethod(this._LAB_createConsecutiveSale));
-
-  private _LAB_consecutivePurchase = async (
-    params: ConsecutivePurchaseParams,
-  ) => {
-    const response = await this.request<ConsecutivePurchaseReturn, any>(
-      `/v3/consecutive-purchase`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-      },
-    );
-
-    if (response.err === false) {
-      const contract = await this.cargo.getContractInstance('cargoSell');
-      const args = response.data.slice(0, response.data.length - 1);
-      const sendParams = response.data[response.data.length - 1];
-      return this.callTxAndPoll(
-        contract.methods.consecutivePurchaseInCrate(...args),
-      )(sendParams);
-    } else {
-      throw new Error(JSON.stringify(response.errorData));
-    }
-  };
-
-  LAB_consecutivePurchase = this.providerMethod<
-    [ConsecutivePurchaseParams],
-    CargoApi['_LAB_consecutivePurchase']
-  >(this._LAB_consecutivePurchase);
-
-  private _getShowcaseApplicationFee = async (showcaseId: string) => {
-    const cargoData = await this.cargo.getContractInstance('cargoData');
-    return cargoData.methods
-      .crateApplicationFee(this.cargo.web3.utils.utf8ToHex(showcaseId))
-      .call();
-  };
-
-  getShowcaseApplicationFee = this.providerMethod<
-    [ShowcaseId],
-    CargoApi['_getShowcaseApplicationFee']
-  >(this._getShowcaseApplicationFee);
-
-  setShowcaseApplicationFee = this.providerMethod(
-    this.authenticatedMethod(async (fee: number, crateId: string) => {
-      if (window.isNaN(fee)) {
-        throw new Error(`${fee} is not a valid argument`);
-      }
-      if (!crateId) {
-        throw new Error(`"${crateId}" is not a valid crate ID`);
-      }
-      const response = await this.request<ArgsResponse, any>(
-        '/v3/set-crate-application-fee',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.token}`,
-          },
-          body: JSON.stringify({
-            fee,
-            crateId,
-          }),
-        },
-      );
-
-      if (response.err === true) {
-        throw new Error(JSON.stringify(response));
-      }
-
-      const { args } = response.data;
-
-      const contract = await this.cargo.getContractInstance('cargoSell');
-
-      return this.callTxAndPoll(
-        contract.methods.setCrateApplicationFee(...args),
-      )({
-        from: this.cargo.accounts[0],
-      });
-    }),
-  );
-
   authenticate = this.providerMethod(async () => {
     const signature = await this.getSignature();
     const [account] = this.cargo.accounts;
@@ -837,8 +708,8 @@ export default class CargoApi {
     const gasPrice = await fetch(
       'https://ethgasstation.info/api/ethgasAPI.json?api-key=7eb1f2d4c3e80bdf25b5385ab725e644819f3709af412e228a26f81e13d2',
     )
-      .then(res => res.json())
-      .then(json => {
+      .then((res) => res.json())
+      .then((json) => {
         return json.fast / 10;
       });
 
@@ -867,7 +738,7 @@ export default class CargoApi {
     };
   };
 
-  callTxAndPoll = (method: Function) => params =>
+  callTxAndPoll = (method: Function) => (params) =>
     new Promise(async (resolve, reject) => {
       try {
         if (this.cargo.estimateGas) {
@@ -880,11 +751,11 @@ export default class CargoApi {
         method
           // @ts-ignore Ignore until we type the method as a web3 contract method
           .send(params)
-          .once('transactionHash', hash => {
+          .once('transactionHash', (hash) => {
             this.cargo.pollTx.watch(hash);
             resolve(hash);
           })
-          .once('error', e => {
+          .once('error', (e) => {
             reject(e);
           });
       } catch (e) {
@@ -1039,7 +910,7 @@ export default class CargoApi {
         commission: number,
         web3TxParams?: any,
       ) => {
-        const isValidCommission = commission => 0 && commission <= 1;
+        const isValidCommission = (commission) => 0 && commission <= 1;
         if (!isValidCommission) {
           throw new Error('Commission must be a number between 0 and 1');
         }
@@ -1144,18 +1015,20 @@ export default class CargoApi {
     });
   };
 
-  private _createContract = async (
+  public createContract = async (
     name: string,
+    network: Chain,
     symbol?: string,
-    crateId?: string,
     web3TxParams?: any,
   ) => {
-    // Adding this here instead of using this.authenticatedMethod
-    // because of optional parameters
+    if (!network || !name) {
+      throw new Error('Cargo JS - createContract: Invalid arguments');
+    }
+    await this.isEnabledAndHasProvider();
     this.checkForToken();
 
     const response = await this.request<ArgsResponse, any>(
-      '/v3/create-contract',
+      '/v5/create-contract',
       {
         method: 'POST',
         headers: {
@@ -1165,7 +1038,6 @@ export default class CargoApi {
         body: JSON.stringify({
           name,
           symbol,
-          crateId,
         }),
       },
     );
@@ -1176,17 +1048,13 @@ export default class CargoApi {
 
     const { args } = response.data;
 
-    const cargoAssetContract = await this.cargo.getContractInstance(
-      'cargoAsset',
+    const contract = await this.cargo.getContractInstance(
+      'nftCreator',
+      network,
     );
-
-    const price = await cargoAssetContract.methods.getPrice('create').call();
-
-    const contract = await this.cargo.getContractInstance('nftCreator');
 
     return this.callTxAndPoll(contract.methods.createContract(...args))({
       from: this.cargo.accounts[0],
-      value: price,
       ...web3TxParams,
     });
   };
@@ -1207,99 +1075,148 @@ export default class CargoApi {
     this._orders,
   );
 
-  public createContract = this.providerMethod<
-    [string, string?, string?],
-    CargoApi['_createContract']
-  >(this._createContract);
-
-  mint = this.providerMethod(
-    async (
+  createMintingSession = async (projectId: string) => {
+    await this.isEnabledAndHasProvider();
+    this.checkForToken();
+    const res = await this.request<{ sessionId: string }, any>(
+      '/v5/wizard/create-session',
       {
-        contractAddress,
-        amount,
-        to,
-        name,
-        description,
-        metadata,
-        previewImage,
-        files,
-        displayContent,
-        method = 'batchMint',
-      }: MintParams,
-      web3TxParams?: any,
-    ) => {
-      this.checkForToken();
-      const cargoData = await this.cargo.getContractInstance('cargoData');
-      const isCargoContract = await cargoData.methods
-        .verifyContract(contractAddress)
-        .call();
-
-      if (!isCargoContract) {
-        throw new Error('invalid-contract');
-      }
-
-      const formData = new FormData();
-      formData.append('contractAddress', contractAddress);
-      formData.append('amount', amount);
-      if (name) {
-        formData.append('name', name);
-      }
-      if (description) {
-        formData.append('description', description);
-      }
-      if (metadata) {
-        formData.append('metadata', JSON.stringify(metadata));
-      }
-      if (previewImage) {
-        formData.append('previewImage', previewImage);
-      }
-      if (displayContent) {
-        formData.append('displayContentType', displayContent.type);
-        displayContent.files.forEach(file => {
-          formData.append('displayContent', file);
-        });
-      }
-      if (Array.isArray(files)) {
-        files.forEach(file => {
-          formData.append('file', file);
-        });
-      }
-
-      const response = await this.request<ArgsResponse, any>('/v3/mint', {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${this.token}`,
         },
-        body: formData,
-      });
+        body: JSON.stringify({ contractId: projectId }),
+      },
+    );
 
-      if (response.err === true) {
-        throw new Error(JSON.stringify(response));
-      }
+    if (res.err === true) {
+      throw new Error(JSON.stringify(res));
+    }
 
-      const { args } = response.data;
+    return res.data.sessionId;
+  };
 
-      const contract = await this.cargo.getContractInstance(
-        'cargoNft',
-        contractAddress,
-      );
+  getMintingSession = async (sessionId: string) => {
+    const res = await this.request('/v5/wizard/get-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: JSON.stringify({ sessionId }),
+    });
 
-      const fnArgs = [];
+    if (res.err === true) {
+      throw new Error(JSON.stringify(res));
+    }
 
-      if (method === 'mint') {
-        fnArgs.push(to, ...args);
-      } else {
-        fnArgs.push(amount, to, ...args);
-      }
+    return res.data;
+  };
 
-      const fn = contract.methods[method](...fnArgs);
+  saveNft = async (
+    sessionId: string,
+    nfts: SaveNft[],
+    onSaved?: (id: string) => void,
+    onError?: (id: string, reason: string) => void,
+  ) => {
+    await this.isEnabledAndHasProvider();
+    this.checkForToken();
+    for (let i = 0; i < nfts.length; i++) {
+      const nft = nfts[i];
+      const fn = async () => {
+        const formData = new FormData();
+        formData.append('sessionId', sessionId);
+        formData.append('uuid', nft.id);
+        formData.append('name', nft.name);
+        formData.append('description', nft.description);
+        formData.append('amount', nft.amount);
+        formData.append('metadata', nft.metadata);
+        if (nft.toDelete) {
+          formData.append('toDelete', JSON.stringify(nft.toDelete));
+        }
+        if (nft.previewImage) {
+          formData.append(
+            'previewImage',
+            nft.previewImage,
+            nft.previewImage.name,
+          );
+        }
+        if (nft.displayContent) {
+          formData.append('displayContentType', nft.displayContent.type);
+        }
+        if (nft.displayContent) {
+          nft.displayContent.files.forEach((file) => {
+            formData.append('displayContent', file, file.name);
+          });
+        }
+        if (Array.isArray(nft.files)) {
+          nft.files.forEach((file) => {
+            formData.append('file', file, file.name);
+          });
+        }
+        const res = await this.request<any, any>('/v5/wizard/save', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+          },
+        });
+        if (!res.err && onSaved) {
+          onSaved(nft.id);
+        } else if (res.err === true) {
+          if (res.errorData?.message === 'over storage limit') {
+            onError(nft.id, 'over storage limit');
+          } else {
+            onError(nft.id, 'unknown');
+          }
+        }
+      };
+      await fn();
+    }
+  };
 
-      return this.callTxAndPoll(fn)({
-        from: this.cargo.accounts[0],
-        ...web3TxParams,
-      });
-    },
-  );
+  wizardMint = async (
+    sessionId: string,
+    contractAddress: string,
+    toAddress: string,
+    web3TxParams?: any,
+  ) => {
+    await this.isEnabledAndHasProvider();
+    this.checkForToken();
+    const res = await this.request<
+      { args: string[]; chain: Chain; amount: string },
+      any
+    >('/v5/wizard/mint', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: JSON.stringify({ sessionId }),
+    });
+
+    if (res.err === true) {
+      throw new Error(JSON.stringify(res.errorData));
+    }
+
+    const contract = await this.cargo.getContractInstance(
+      'cargoNft',
+      res.data.chain,
+      contractAddress,
+    );
+
+    const fn = contract.methods.batchMint(
+      res.data.amount,
+      toAddress,
+      ...res.data.args,
+    );
+
+    return this.callTxAndPoll(fn)({
+      from: this.cargo.accounts[0],
+      ...web3TxParams,
+    });
+  };
 
   transferCollectible = this.providerMethod(
     async (
@@ -1307,6 +1224,7 @@ export default class CargoApi {
       tokenId: string,
       to: string,
       magic?: boolean,
+      chain?: Chain,
       web3TxParams?: any,
     ) => {
       if (magic) {
@@ -1334,6 +1252,7 @@ export default class CargoApi {
       } else {
         const contract = await this.cargo.getContractInstance(
           'cargoNft',
+          chain,
           contractAddress,
         );
         return this.callTxAndPoll(
@@ -1348,9 +1267,15 @@ export default class CargoApi {
   );
 
   burnCollectible = this.providerMethod(
-    async (contractAddress: string, tokenId: string, web3TxParams?: any) => {
+    async (
+      contractAddress: string,
+      tokenId: string,
+      chain?: Chain,
+      web3TxParams?: any,
+    ) => {
       const contract = await this.cargo.getContractInstance(
         'cargoNft',
+        chain,
         contractAddress,
       );
       return this.callTxAndPoll(contract.methods.burn(tokenId))({
@@ -1360,10 +1285,14 @@ export default class CargoApi {
     },
   );
 
-  purchase = async (saleId: string, web3Params: any) => {
+  purchase = async (saleId: string, chain: Chain, web3Params: any) => {
     await this.isEnabledAndHasProvider();
     const response = await this.request<
-      { args: string[]; web3Params: {} },
+      {
+        args: string[];
+        web3Params: {};
+        contract: 'orderExecutorV1' | 'orderExecutorV2';
+      },
       any
     >('/v4/purchase', {
       method: 'POST',
@@ -1374,7 +1303,10 @@ export default class CargoApi {
     });
 
     if (response.err === false) {
-      const contract = await this.cargo.getContractInstance('orderExecutorV1');
+      const contract = await this.cargo.getContractInstance(
+        response.data?.contract ?? 'orderExecutorV1',
+        chain,
+      );
       return this.callTxAndPoll(
         contract.methods.purchase(...response.data.args),
       )({
@@ -1438,6 +1370,7 @@ export default class CargoApi {
   sell = this.providerMethod(
     async (
       {
+        chain,
         currencyId,
         contractAddress,
         tokenId,
@@ -1446,6 +1379,7 @@ export default class CargoApi {
         price,
         magic,
       }: {
+        chain: Chain;
         contractAddress: string;
         tokenId: string;
         price: string;
@@ -1473,6 +1407,7 @@ export default class CargoApi {
 
       const contract = await this.cargo.getContractInstance(
         'cargoNft',
+        chain,
         contractAddress,
       );
 
@@ -1498,19 +1433,20 @@ export default class CargoApi {
         }
       }
 
-      const { address: orderExecutorV1 } = await this.cargo.getContract(
-        'orderExecutorV1',
+      const { address: orderExecutorV2 } = await this.cargo.getContract(
+        'orderExecutorV2',
+        chain,
       );
 
       const isApproved = await contract.methods
-        .isApprovedForAll(sender, orderExecutorV1)
+        .isApprovedForAll(sender, orderExecutorV2)
         .call();
 
       if (!isApproved) {
         if (unapprovedFn) {
           unapprovedFn();
         }
-        await contract.methods.setApprovalForAll(orderExecutorV1, true).send({
+        await contract.methods.setApprovalForAll(orderExecutorV2, true).send({
           from: this.accounts[0],
           ...web3Params,
         });
@@ -1819,7 +1755,7 @@ export default class CargoApi {
           string[],
           string,
           [string, string, string],
-          string
+          string,
         ];
         values: { from: string; value: string };
       },
@@ -1848,12 +1784,14 @@ export default class CargoApi {
       showcaseId,
       price, // wei
       contractAddress,
+      chain,
     }: {
       ids: string[];
       values: string[];
       price: string;
       showcaseId?: string;
       contractAddress: string;
+      chain: Chain;
     },
     unapprovedFn: () => any,
     web3Params: any,
@@ -1862,10 +1800,12 @@ export default class CargoApi {
 
     const { address: cargoSellAddress } = await this.cargo.getContract(
       'cargoSell',
+      chain,
     );
 
     const contract = await this.cargo.getContractInstance(
       'erc1155',
+      chain,
       contractAddress,
     );
 
@@ -1913,9 +1853,10 @@ export default class CargoApi {
     amount: string,
     address: string,
     operator: string,
+    chain: Chain,
     web3TxParams?: any,
   ) => {
-    const erc20 = await this.cargo.getContractInstance('erc20', address);
+    const erc20 = await this.cargo.getContractInstance('erc20', chain, address);
     return this.callTxAndPoll(erc20.methods.approve(operator, amount))({
       from: this.cargo.accounts[0],
       ...web3TxParams,
@@ -1923,8 +1864,8 @@ export default class CargoApi {
   };
 
   public approveGems = async (amount: string, web3TxParams?: any) => {
-    const staking = await this.cargo.getContract('cargoGemsStaking');
-    const gems = await this.cargo.getContractInstance('cargoGems');
+    const staking = await this.cargo.getContract('cargoGemsStaking', 'eth');
+    const gems = await this.cargo.getContractInstance('cargoGems', 'eth');
     return this.callTxAndPoll(gems.methods.approve(staking.address, amount))({
       from: this.cargo.accounts[0],
       ...web3TxParams,

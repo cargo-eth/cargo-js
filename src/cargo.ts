@@ -13,6 +13,7 @@ import CargoApi from './api';
 import PollTx from './pollTx';
 import Utils from './utils';
 import getContractAbi, { ContractData } from './getContractAbi';
+import { Chain } from './types';
 
 export type TNetwork = 'local' | 'development' | 'production';
 
@@ -32,8 +33,10 @@ declare global {
 }
 
 export type ContractNames =
+  | 'orderExecutor1155V1'
   | 'cargoNft'
   | 'orderExecutorV1'
+  | 'orderExecutorV2'
   | 'magicMintUtil'
   | 'erc1155'
   | 'nftCreator'
@@ -45,7 +48,8 @@ export type ContractNames =
   | 'cargoGemsStaking'
   | 'erc20'
   | 'cargoGems'
-  | 'cargoVendor';
+  | 'cargoVendor'
+  | 'nftFarm';
 
 type ContractObject = {
   name: ContractNames;
@@ -124,10 +128,14 @@ class Cargo extends Emitter {
 
   utils?: Utils;
 
-  getContract?: (contract: ContractNames) => Promise<ContractData>;
+  getContract?: (
+    contract: ContractNames,
+    chain: Chain,
+  ) => Promise<ContractData>;
 
   getContractInstance?: (
     contract: ContractNames,
+    network?: Chain,
     setAddress?: string,
   ) => Promise<typeof Contract>;
 
@@ -245,9 +253,10 @@ class Cargo extends Emitter {
     if (this.setUpWeb3()) {
       this.getContractInstance = async (
         contract: ContractNames,
+        network: Chain = 'eth',
         setAddress?: string,
       ) => {
-        const { abi, address } = await this.getContract(contract);
+        const { abi, address } = await this.getContract(contract, network);
         const contractInstance = new this.web3.eth.Contract(
           // @ts-ignore
           abi,

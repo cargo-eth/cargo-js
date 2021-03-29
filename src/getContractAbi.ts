@@ -1,9 +1,13 @@
 import { ContractNames } from './cargo';
 import packageJson from '../package.json';
+import { Chain } from './types';
 
 const VALID_CONTRACTS: ContractNames[] = [
+  'orderExecutor1155V1',
   'cargoNft',
   'orderExecutorV1',
+  'orderExecutorV2',
+  'orderExecutor1155V1',
   'nftCreator',
   'erc1155',
   'cargoData',
@@ -16,6 +20,7 @@ const VALID_CONTRACTS: ContractNames[] = [
   'cargoGemsStaking',
   'erc20',
   'cargoGems',
+  'nftFarm',
 ];
 
 const CARGO_LOCAL_STORAGE_KEY = `__CARGO_LS_KEY__${packageJson.version}`;
@@ -40,35 +45,42 @@ export default (requestUrl: string) => {
     cache = {};
   }
 
-  const setCache = (contract: ContractNames, value: ContractData) => {
-    cache[contract] = value;
+  const setCache = (
+    contract: ContractNames,
+    network: Chain,
+    value: ContractData,
+  ) => {
+    cache[network] = cache[network] || {};
+    cache[network][contract] = value;
     sessionStorage.setItem(CARGO_LOCAL_STORAGE_KEY, JSON.stringify(cache));
   };
 
   const getContract = async (
     contract: ContractNames,
+    network: Chain,
   ): Promise<ContractData> => {
-    if (cache[contract]) {
-      return cache[contract];
+    const networkCache = cache[network] || {};
+    if (networkCache[contract]) {
+      return networkCache[contract];
     }
 
     const response = await fetch(
-      `${requestUrl}/v3/get-contract-abi/${contract}`,
+      `${requestUrl}/v5/contract-abi/${network}/${contract}`,
     );
 
     if (response.status === 200) {
       const body = await response.json();
-      setCache(contract, body);
+      setCache(contract, network, body);
       return body;
     } else {
       throw new Error(`Could not fetch contract ${contract}`);
     }
   };
 
-  return async (contract: ContractNames) => {
+  return async (contract: ContractNames, network: Chain) => {
     if (!VALID_CONTRACTS.includes(contract)) {
       throw new Error(`${contract} is not a valid contract`);
     }
-    return getContract(contract);
+    return getContract(contract, network);
   };
 };

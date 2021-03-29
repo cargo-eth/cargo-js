@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0]
+
+- xDai support
+- Minting wizard
+
 ## [5.1.1]
 
 - Add Web3 params to purchase
@@ -35,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Adding Gem staking methods
 - Adding `once` method to PollTx
-- Remove rounding of Cargo Credits 
+- Remove rounding of Cargo Credits
 - Add estimate gas function
 
 ## [3.2.3]
@@ -66,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introducing LAB mehods which are experimental in nature
 - Adding LAB_createConsecutiveSale method
 - Adding LAB_consecutivePurchase method
-- Updating eslintrc 
+- Updating eslintrc
 
 ## [3.0.5]
 
