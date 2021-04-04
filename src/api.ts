@@ -42,22 +42,6 @@ const signingMessage =
 
 type ArgsResponse = { args: string[] };
 
-type MintParams = {
-  method?: 'batchMint' | 'mint';
-  contractAddress: string;
-  amount: string;
-  to: string;
-  name?: string;
-  description?: string;
-  metadata?: Record<string, unknown>;
-  previewImage?: File;
-  files?: File[];
-  displayContent?: {
-    type: 'audio' | 'video' | '3D';
-    files: File[];
-  };
-};
-
 export default class CargoApi {
   requestUrl: string;
 
@@ -240,7 +224,7 @@ export default class CargoApi {
   };
 
   public download = this.providerMethod(
-    async (contractAddress: string, tokenId: string) => {
+    async (contractAddress: string, tokenId: string, chain: Chain) => {
       const message = `${contractAddress}:${tokenId}`;
 
       const p = () =>
@@ -270,17 +254,21 @@ export default class CargoApi {
           signature,
           tokenId,
           contractAddress,
+          chain,
         }),
       });
     },
   );
 
-  private _bulkMetadataUpdate = async (
+  public bulkMetadataUpdate = (
     contractAddress: string,
     metadata: {
       [tokenId: string]: Object;
     },
+    chain: Chain,
   ) => {
+    this.checkForToken();
+
     return this.request('/v3/bulk-metadata-update', {
       method: 'POST',
       headers: {
@@ -290,19 +278,10 @@ export default class CargoApi {
       body: JSON.stringify({
         contractAddress,
         metadata,
+        chain,
       }),
     });
   };
-
-  public bulkMetadataUpdate = this.authenticatedMethod<
-    [
-      string,
-      {
-        [tokenId: string]: Object;
-      },
-    ],
-    CargoApi['_bulkMetadataUpdate']
-  >(this._bulkMetadataUpdate);
 
   public addCollectiblesToShowcase = async (
     items: Record<string, string[]>,
@@ -444,6 +423,7 @@ export default class CargoApi {
     collectionAddress?: string;
     page?: string;
     limit?: string;
+    projectId?: string;
     owned?: string;
     // If slug is present slug id is required
     slug?: string;
@@ -470,6 +450,7 @@ export default class CargoApi {
       showcaseId,
       collectionId,
       owned,
+      projectId,
       slug,
       slugId,
       collectionAddress,
@@ -533,6 +514,10 @@ export default class CargoApi {
 
     if (slug && slugId) {
       query = addToQuery(query, `slug=${slug}&slugId=${slugId}`);
+    }
+
+    if (projectId) {
+      query = addToQuery(query, `projectId=${projectId}`);
     }
 
     return this.request(`/v3/get-resale-items${query}`, {
@@ -1178,14 +1163,13 @@ export default class CargoApi {
 
   wizardMint = async (
     sessionId: string,
-    contractAddress: string,
     toAddress: string,
     web3TxParams?: any,
   ) => {
     await this.isEnabledAndHasProvider();
     this.checkForToken();
     const res = await this.request<
-      { args: string[]; chain: Chain; amount: string },
+      { args: string[]; chain: Chain; amount: string; address: string },
       any
     >('/v5/wizard/mint', {
       method: 'POST',
@@ -1203,7 +1187,7 @@ export default class CargoApi {
     const contract = await this.cargo.getContractInstance(
       'cargoNft',
       res.data.chain,
-      contractAddress,
+      res.data.address,
     );
 
     const fn = contract.methods.batchMint(
@@ -1373,6 +1357,7 @@ export default class CargoApi {
         chain,
         currencyId,
         contractAddress,
+        projectId,
         tokenId,
         payees,
         commissions,
@@ -1381,6 +1366,7 @@ export default class CargoApi {
       }: {
         chain: Chain;
         contractAddress: string;
+        projectId: string;
         tokenId: string;
         price: string;
         crateId?: string;
@@ -1397,6 +1383,7 @@ export default class CargoApi {
       const body: { [key: string]: any } = {
         sender,
         contractAddress,
+        projectId,
         tokenId,
         payees,
         commissions,
@@ -1656,9 +1643,9 @@ export default class CargoApi {
     );
   };
 
-  public getTokenDetails = async (contractAddress: string, tokenId: string) => {
+  public getTokenDetails = async (projectId: string, tokenId: string) => {
     return this.request<TokenDetail, any>(
-      `/v3/get-token-details/${contractAddress}/${tokenId}`,
+      `/v5/get-token-details/${projectId}/${tokenId}`,
     );
   };
 
@@ -1671,13 +1658,14 @@ export default class CargoApi {
     );
   };
 
-  public getTokensByContract = async ({
-    contractAddress,
+  public getTokensByProject = async ({
     ownerAddress,
+    projectId,
     page,
     limit,
   }: {
     contractAddress: string;
+    projectId: string;
     ownerAddress?: string;
     page?: string;
     limit?: string;
@@ -1696,10 +1684,14 @@ export default class CargoApi {
       query = addToQuery(query, `ownerAddress=${ownerAddress}`);
     }
 
+    if (projectId) {
+      query = addToQuery(query, `projectId=${projectId}`);
+    }
+
     return this.request<
       PaginationResponseWithResults<GetTokensByContractResponse>,
       any
-    >(`/v3/get-tokens-by-contract/${contractAddress}${query}`);
+    >(`/v5/get-tokens-by-project/${projectId}${query}`);
   };
 
   private _getOrders = async (options: GetOrderParams) => {
@@ -1721,10 +1713,12 @@ export default class CargoApi {
     useAuth,
     slug,
     slugId,
+    chain,
   }: {
     contractAddress: string;
     useAuth?: boolean;
     slug?: string;
+    chain?: Chain;
     slugId?: string;
   }) => {
     const headers: { [key: string]: any } = {};
@@ -1738,10 +1732,34 @@ export default class CargoApi {
     if (slugId) {
       query = addToQuery(query, `slugId=${slugId}`);
     }
+
+    if (chain) {
+      query = addToQuery(query, `chain=${chain}`);
+    }
     return this.request<ContractMetadata, any>(
       `/v3/get-contract-metadata/${contractAddress}${query}`,
       { headers },
     );
+  };
+
+  public getProjectMetadata = async ({
+    id,
+    useAuth,
+  }: {
+    id: string;
+    useAuth?: boolean;
+  }) => {
+    const headers: { [key: string]: any } = {};
+    if (useAuth && this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+    if (useAuth && this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    return this.request<ContractMetadata, any>(`/v5/project-metadata/${id}`, {
+      headers,
+    });
   };
 
   public purchaseErc1155 = async (resaleItemId: string, web3TxParams?: any) => {
