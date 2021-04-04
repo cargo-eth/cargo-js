@@ -207,17 +207,14 @@ export default class CargoApi {
     }
   };
 
-  public isUnlockable = async (
-    contractAddress: string,
-    collectibleId: string,
-  ) => {
+  public isUnlockable = async (projectId: string, collectibleId: string) => {
     return this.request<{ unlockable: boolean }, any>('/v3/unlockable', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contractAddress,
+        projectId,
         tokenId: collectibleId,
       }),
     });
@@ -970,7 +967,7 @@ export default class CargoApi {
   );
 
   public getRoyalty = async (params: {
-    contractAddress: string;
+    projectId: string;
     tokenId: string;
   }) => {
     return this.request<{ royalty: Royalty }, any>('/v4/get-royalty', {
@@ -983,7 +980,7 @@ export default class CargoApi {
   };
 
   public addRoyalty = async (params: {
-    contractAddress: string;
+    projectId: string;
     tokenId: string;
     payees: string[];
     commissions: string[];
