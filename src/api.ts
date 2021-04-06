@@ -548,6 +548,7 @@ export default class CargoApi {
     limit?: string;
     showcaseId?: string;
     address?: string;
+    chain?: Chain;
     hasTokens?: boolean;
     owned?: boolean;
     cargoContract?: boolean;
@@ -566,6 +567,7 @@ export default class CargoApi {
       cargoContract,
       address,
       hasTokens,
+      chain,
       skipAuth,
     } = options || {};
 
@@ -582,6 +584,10 @@ export default class CargoApi {
     }
     if (showcaseId) {
       params.set('crateId', showcaseId);
+    }
+
+    if (chain) {
+      params.set('chain', 'true');
     }
 
     if (address) {
