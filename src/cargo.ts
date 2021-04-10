@@ -219,7 +219,7 @@ class Cargo extends Emitter {
     fetch(`${!rawUrl ? `${this.requestUrl}${path}` : path}`, {
       cache: 'no-cache',
       ...options,
-    }).then(async res => {
+    }).then(async (res) => {
       if (isJson) {
         const json = await res.json();
         if (res.ok) {
@@ -267,7 +267,7 @@ class Cargo extends Emitter {
       try {
         if (this.provider && this.provider.isMetaMask) {
           // @ts-ignore
-          window.ethereum.on('accountsChanged', accounts => {
+          window.ethereum.on('accountsChanged', (accounts) => {
             this.accounts = accounts;
             this.api.setAccounts(accounts);
             this.emit('accounts-changed', accounts);

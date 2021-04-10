@@ -587,7 +587,7 @@ export default class CargoApi {
     }
 
     if (chain) {
-      params.set('chain', 'true');
+      params.set('chain', chain);
     }
 
     if (address) {
@@ -1261,7 +1261,7 @@ export default class CargoApi {
       web3TxParams?: any,
     ) => {
       const contract = await this.cargo.getContractInstance(
-        'cargoNft',
+        'super721',
         chain,
         contractAddress,
       );
