@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-ignore
 import Web3 from 'web3';
-// @ts-ignore
-import { Provider } from 'web3/providers';
 import packageJson from '../package.json';
-// @ts-ignore
-import Contract from 'web3/eth/contract';
 
 import BigNumber from 'bignumber.js';
 import { Emitter } from './events';
@@ -26,7 +22,7 @@ const validOptionKeys: (keyof CargoOptions)[] = ['network', 'provider'];
 
 declare global {
   interface Window {
-    ethereum?: Provider & { enable: () => Array<string> };
+    ethereum?: Record<string, unknown> & { enable: () => Array<string> };
     web3?: Web3;
     isNaN: (any) => boolean;
   }
@@ -50,6 +46,9 @@ export type ContractNames =
   | 'cargoGems'
   | 'cargoVendor'
   | 'nftFarm';
+
+type Provider = any;
+type Contract = any;
 
 type ContractObject = {
   name: ContractNames;
@@ -83,7 +82,7 @@ const DEFAULT_OPTIONS: CargoOptions = {
 
 const REQUEST_URLS: { [N in TNetwork]: string } = {
   local: 'http://localhost:3333',
-  development: 'https://development.cargo.engineering',
+  development: 'https://ecs-development.cargo.engineering',
   production: 'https://api2.cargo.build',
 };
 
@@ -137,7 +136,7 @@ class Cargo extends Emitter {
     contract: ContractNames,
     network?: Chain,
     setAddress?: string,
-  ) => Promise<typeof Contract>;
+  ) => Promise<Contract>;
 
   constructor(options?: CargoOptions) {
     super();
@@ -245,7 +244,7 @@ class Cargo extends Emitter {
   enabled = false;
 
   contractInstanceCache: {
-    [requestUrl: string]: { [contract in ContractNames]?: typeof Contract };
+    [requestUrl: string]: { [contract in ContractNames]?: Contract };
   } = {};
 
   public enable = async () => {
