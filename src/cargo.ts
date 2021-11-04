@@ -82,8 +82,8 @@ const DEFAULT_OPTIONS: CargoOptions = {
 
 const REQUEST_URLS: { [N in TNetwork]: string } = {
   local: 'http://localhost:3333',
-  development: 'https://ecs-development.cargo.engineering',
-  production: 'https://api2.cargo.build',
+  development: 'https://ecs-dev.cargo.engineering',
+  production: 'https://api3.cargo.build',
 };
 
 export type ResponseType<D> =
